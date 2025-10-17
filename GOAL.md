@@ -1,7 +1,7 @@
 # Goal: Location-Based Services MVP for Ethereum
 
 ## What We're Building
-A **hosted geospatial policy engine** that evaluates spatial computations and outputs results as signed EAS attestations, usable offchain, in servers, and onchain in smart contracts.
+**Astral Location Services** - a geospatial computation oracle that makes location-based smart contracts possible. Think "PostGIS for Ethereum" - we provide verifiable geospatial operations that work onchain.
 
 ## Core Concepts
 
@@ -10,20 +10,21 @@ A **hosted geospatial policy engine** that evaluates spatial computations and ou
 - Can be onchain (any EAS deployment) or offchain (EIP-712 signatures)
 - Stored anywhere (IPFS, servers, local, etc.)
 - Schema inspired by PostGIS geometry tables
-- Referenced by UID (or raw geometry data accepted)
-- These are atomic records in a universal geospatial database
+- Referenced by UID or passed as raw GeoJSON
+- Atomic records in a universal geospatial database
 
-**Policy Engine (The Service)**
-- Performs geospatial computations on attestation UIDs or raw geometry
-- Operations: distance, contains, intersects, within, buffer, etc.
-- Simple, composable functions (NOT custom stored policies)
+**Geospatial Operations (The Service)**
+- Performs spatial computations on attestation UIDs or raw geometry
+- Operations: distance, contains, intersects, within, buffer, area, etc.
+- **Operations-first, predicates later**: Start with atomic operations (like PostGIS/Turf), compose into higher-level predicates later
 - Stateless computation service
+- **Complements Turf.js**: Turf for local/UX operations, Astral for verifiable/onchain operations
 
-**Policy Results (Output)**
+**Policy Attestations (Output)**
 - Signed EAS attestations containing computation results
-- Developer specifies offchain or onchain submission
-- Schema question to resolve: single universal schema vs. multiple schemas
+- Usable offchain (direct consumption) and onchain (via signature verification or EAS resolvers)
 - Service holds signing keys to attest to results
+- **EAS Resolver Integration**: Resolvers can gate onchain actions based on policy attestation results
 
 ## What Already Exists
 - Location Protocol data model & schema (EAS-based)
@@ -32,32 +33,62 @@ A **hosted geospatial policy engine** that evaluates spatial computations and ou
 - API indexer (OGC API Features conformant) for spatial queries
 - Plans for location verification/proofs
 
-## Developer Experience (MVP)
+## Developer Experience
+
+**SDK Structure:**
 ```javascript
-// 1. Query for locations if needed (existing API)
-const places = await api.query({ filter: ... })
+const sdk = new AstralSDK({ signer });
 
-// 2. Evaluate policy (new service)
-const result = await policyEngine.evaluate({
-  operation: 'distance',
-  inputs: [uid1, uid2],
-  submitOnchain: false
-})
+// Work with location attestations
+await sdk.location.create(geojson);    // Create location attestation
+await sdk.location.get(uid);           // Fetch by UID
+await sdk.location.query(filters);     // Search locations
 
-// 3. Use result (it's a signed EAS attestation)
-// Offchain: use result.data directly
-// Onchain: submit result attestation to contract
+// Compute with verification
+await sdk.compute.distance(uid1, uid2);           // → Policy Attestation
+await sdk.compute.contains(polygonUID, pointUID); // → Policy Attestation
+await sdk.compute.within(pointUID, targetUID, 500); // → Policy Attestation
 ```
 
-## MVP Constraints
-- Centralized service (trust the operator)
-- No query integration in policy engine (devs orchestrate separately)
-- Defer verification (AVS/ZK/TEE) until after validation
-- Focus on clarity and developer experience
-- Web3 native, geospatial-friendly
+**Use Turf.js for local operations:**
+```javascript
+// Instant UX feedback (local)
+const localDistance = turf.distance(point1, point2);
 
-## Open Questions
-1. Output schema design (single vs. multiple)
-2. Which geospatial operations to support first
-3. Input/output API format
-4. Signature scheme details
+// Verifiable proof (calls service, returns signed attestation)
+const attestedDistance = await sdk.compute.distance(uid1, uid2);
+```
+
+**Onchain integration via EAS resolvers:**
+```solidity
+contract LocationGatedNFT is SchemaResolver {
+    function onAttest(Attestation calldata attestation, uint256)
+        internal override returns (bool) {
+        // Verify from Astral, check policy result, execute logic
+        (bool isNearby) = abi.decode(attestation.data, (bool));
+        require(isNearby, "Not close enough");
+        _mint(attestation.recipient, tokenId);
+        return true;
+    }
+}
+```
+
+## Architecture
+
+**Technical:**
+- Separate service (independent scaling/deployment)
+- Shares Postgres DB with API indexer (read location attestations)
+- Accessed via unified API interface at `api.astral.global/compute/*`
+
+**Trust Model (MVP):**
+- Centralized service with known signer
+- Deterministic operations (same inputs → same outputs)
+- Future: decentralize via AVS/ZK proofs/TEEs
+
+## Key Insights
+
+1. **Operations before predicates**: Atomic operations (distance, contains) are building blocks for composed predicates
+2. **Complement, don't replace Turf**: Developers use both - Turf for UX, Astral for verification
+3. **EAS resolvers unlock the killer use case**: Location-gated smart contracts become trivial
+4. **UIDs as first-class but not exclusive**: Accept UIDs (primary) and raw GeoJSON (convenience)
+5. **Verifiability layer for geospatial web**: PostGIS/GeoJSON/Turf now compatible with Ethereum
