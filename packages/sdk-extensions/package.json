@@ -1,0 +1,42 @@
+{
+  "name": "@decentralized-geo/astral-compute",
+  "version": "0.1.0",
+  "description": "SDK for Astral Location Services - verifiable geospatial computation",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "lint": "eslint src/",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ethereum-attestation-service/eas-sdk": "^2.7.0",
+    "ethers": "^6.13.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.7",
+    "typescript": "^5.7.3"
+  },
+  "peerDependencies": {
+    "ethers": "^6.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "ethereum",
+    "eas",
+    "attestation",
+    "geospatial",
+    "location",
+    "verifiable"
+  ]
+}
