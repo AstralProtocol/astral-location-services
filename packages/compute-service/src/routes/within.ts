@@ -1,35 +1,12 @@
 import { Router } from 'express';
-import { z } from 'zod';
 import { computeWithin } from '../db/spatial.js';
 import { resolveInputs } from '../services/input-resolver.js';
 import { signBooleanAttestation } from '../signing/attestation.js';
 import { Errors } from '../middleware/error-handler.js';
+import { WithinRequestSchema } from '../validation/schemas.js';
 import type { BooleanComputeResponse } from '../types/index.js';
 
 const router = Router();
-
-const GeometrySchema = z.object({
-  type: z.enum(['Point', 'MultiPoint', 'LineString', 'MultiLineString', 'Polygon', 'MultiPolygon', 'GeometryCollection']),
-  coordinates: z.any(),
-}).passthrough();
-
-const InputSchema = z.union([
-  GeometrySchema,
-  z.object({ uid: z.string() }),
-  z.object({ uid: z.string(), uri: z.string().url() }),
-]);
-
-const WithinRequestSchema = z.object({
-  chainId: z.number().int().positive('chainId must be a positive integer'),
-  geometry: InputSchema,
-  target: InputSchema,
-  radius: z.number().positive('Radius must be positive'),
-  schema: z.string().regex(/^0x[a-fA-F0-9]{64}$/, 'Invalid schema UID'),
-  recipient: z.string()
-    .regex(/^0x[a-fA-F0-9]{40}$/, 'Invalid recipient address')
-    .optional()
-    .default('0x0000000000000000000000000000000000000000'),
-});
 
 /**
  * POST /compute/within
@@ -44,17 +21,17 @@ router.post('/', async (req, res, next) => {
       throw Errors.invalidInput(parsed.error.message);
     }
 
-    const { geometry, target, radius, schema, recipient } = parsed.data;
+    const { point, target, radius, schema, recipient } = parsed.data;
 
-    const [geometryResolved, targetResolved] = await resolveInputs([geometry, target]);
+    const [pointResolved, targetResolved] = await resolveInputs([point, target]);
 
-    const result = await computeWithin(geometryResolved.geometry, targetResolved.geometry, radius);
+    const result = await computeWithin(pointResolved.geometry, targetResolved.geometry, radius);
     const timestamp = Math.floor(Date.now() / 1000);
 
     const signingResult = await signBooleanAttestation(
       {
         result,
-        inputRefs: [geometryResolved.ref, targetResolved.ref],
+        inputRefs: [pointResolved.ref, targetResolved.ref],
         timestamp: BigInt(timestamp),
         operation: 'within',
       },
@@ -66,7 +43,7 @@ router.post('/', async (req, res, next) => {
       result,
       operation: 'within',
       timestamp,
-      inputRefs: [geometryResolved.ref, targetResolved.ref],
+      inputRefs: [pointResolved.ref, targetResolved.ref],
       attestation: signingResult.attestation,
       delegatedAttestation: signingResult.delegatedAttestation,
     };

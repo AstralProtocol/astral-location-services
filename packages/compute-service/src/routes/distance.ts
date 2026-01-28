@@ -1,37 +1,13 @@
 import { Router } from 'express';
-import { z } from 'zod';
 import { computeDistance } from '../db/spatial.js';
 import { resolveInputs } from '../services/input-resolver.js';
 import { signNumericAttestation } from '../signing/attestation.js';
 import { UNITS, SCALE_FACTORS, scaleToUint256 } from '../signing/schemas.js';
 import { Errors } from '../middleware/error-handler.js';
+import { DistanceRequestSchema } from '../validation/schemas.js';
 import type { NumericComputeResponse } from '../types/index.js';
 
 const router = Router();
-
-// GeoJSON Geometry schema
-const GeometrySchema = z.object({
-  type: z.enum(['Point', 'MultiPoint', 'LineString', 'MultiLineString', 'Polygon', 'MultiPolygon', 'GeometryCollection']),
-  coordinates: z.any(),
-}).passthrough();
-
-// Input can be raw GeoJSON (for MVP) or UID references (Phase 2)
-const InputSchema = z.union([
-  GeometrySchema,
-  z.object({ uid: z.string() }),
-  z.object({ uid: z.string(), uri: z.string().url() }),
-]);
-
-const DistanceRequestSchema = z.object({
-  chainId: z.number().int().positive('chainId must be a positive integer'),
-  from: InputSchema,
-  to: InputSchema,
-  schema: z.string().regex(/^0x[a-fA-F0-9]{64}$/, 'Invalid schema UID'),
-  recipient: z.string()
-    .regex(/^0x[a-fA-F0-9]{40}$/, 'Invalid recipient address')
-    .optional()
-    .default('0x0000000000000000000000000000000000000000'),
-});
 
 /**
  * POST /compute/distance
