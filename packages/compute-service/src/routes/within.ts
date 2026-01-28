@@ -21,7 +21,7 @@ const InputSchema = z.union([
 ]);
 
 const WithinRequestSchema = z.object({
-  point: InputSchema,
+  geometry: InputSchema,
   target: InputSchema,
   radius: z.number().positive('Radius must be positive'),
   schema: z.string().regex(/^0x[a-fA-F0-9]{64}$/, 'Invalid schema UID'),
@@ -31,7 +31,7 @@ const WithinRequestSchema = z.object({
 /**
  * POST /compute/within
  *
- * Check if a point is within a given radius (meters) of a target geometry.
+ * Check if a geometry is within a given radius (meters) of a target geometry.
  * Returns a signed delegated attestation with the boolean result.
  */
 router.post('/', async (req, res, next) => {
@@ -41,17 +41,17 @@ router.post('/', async (req, res, next) => {
       throw Errors.invalidInput(parsed.error.message);
     }
 
-    const { point, target, radius, schema, recipient } = parsed.data;
+    const { geometry, target, radius, schema, recipient } = parsed.data;
 
-    const [pointResolved, targetResolved] = await resolveInputs([point, target]);
+    const [geometryResolved, targetResolved] = await resolveInputs([geometry, target]);
 
-    const result = await computeWithin(pointResolved.geometry, targetResolved.geometry, radius);
+    const result = await computeWithin(geometryResolved.geometry, targetResolved.geometry, radius);
     const timestamp = BigInt(Math.floor(Date.now() / 1000));
 
     const attestation = await signBooleanAttestation(
       {
         result,
-        inputRefs: [pointResolved.ref, targetResolved.ref],
+        inputRefs: [geometryResolved.ref, targetResolved.ref],
         timestamp,
         operation: 'within',
       },
@@ -66,7 +66,7 @@ router.post('/', async (req, res, next) => {
         units: 'boolean',
       },
       inputs: {
-        refs: [pointResolved.ref, targetResolved.ref],
+        refs: [geometryResolved.ref, targetResolved.ref],
       },
     };
 
