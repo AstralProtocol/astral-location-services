@@ -12,15 +12,23 @@ export interface OffchainInput {
   uri: string;
 }
 
-export type Input = RawGeometryInput | OnchainInput | OffchainInput;
+// Support direct UID string in addition to objects
+export type Input =
+  | string            // Direct UID: "0xabc..."
+  | RawGeometryInput  // GeoJSON Geometry
+  | OnchainInput      // { uid: string }
+  | OffchainInput;    // { uid: string, uri: string }
 
 // Compute options
 export interface ComputeOptions {
   schema: string;
-  recipient: string;
+  recipient?: string;  // Optional, defaults to zero address on server
 }
 
-// Attestation types
+// ============================================================================
+// Legacy attestation types (kept for EAS submission compatibility)
+// ============================================================================
+
 export interface DelegatedAttestationMessage {
   schema: string;
   recipient: string;
@@ -45,35 +53,53 @@ export interface DelegatedAttestation {
   attester: string;
 }
 
-// Response types
-export interface NumericComputeResult {
-  attestation: DelegatedAttestation;
-  result: {
-    value: number;
-    units: string;
-  };
-  inputs: {
-    refs: string[];
-  };
+// ============================================================================
+// New flat API response types
+// ============================================================================
+
+// Attestation object returned by API
+export interface AttestationObject {
+  schema: string;
+  attester: string;
+  recipient: string;
+  data: string;
+  signature: string;
 }
 
+// Delegated attestation for submission
+export interface DelegatedAttestationObject {
+  signature: string;
+  attester: string;
+  deadline: number;
+}
+
+// Response for numeric operations (distance, area, length)
+export interface NumericComputeResult {
+  result: number;
+  units: string;
+  operation: string;
+  timestamp: number;
+  inputRefs: string[];
+  attestation: AttestationObject;
+  delegatedAttestation: DelegatedAttestationObject;
+}
+
+// Response for boolean operations (contains, within, intersects)
 export interface BooleanComputeResult {
-  attestation: DelegatedAttestation;
-  result: {
-    value: number; // 1 for true, 0 for false
-    units: 'boolean';
-  };
-  inputs: {
-    refs: string[];
-  };
+  result: boolean;
+  operation: string;
+  timestamp: number;
+  inputRefs: string[];
+  attestation: AttestationObject;
+  delegatedAttestation: DelegatedAttestationObject;
 }
 
 export type ComputeResult = NumericComputeResult | BooleanComputeResult;
 
 // SDK configuration
 export interface AstralComputeConfig {
-  apiUrl: string;
-  chainId: number;
+  apiUrl?: string;   // Optional, defaults to production URL
+  chainId: number;   // Required
 }
 
 // EAS submission types
