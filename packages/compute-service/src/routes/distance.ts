@@ -5,8 +5,7 @@ import { resolveInputs } from '../services/input-resolver.js';
 import { signNumericAttestation } from '../signing/attestation.js';
 import { UNITS, SCALE_FACTORS, scaleToUint256 } from '../signing/schemas.js';
 import { Errors } from '../middleware/error-handler.js';
-import type { ComputeResponse } from '../types/index.js';
-import { toSerializableAttestation } from '../types/index.js';
+import type { NumericComputeResponse } from '../types/index.js';
 
 const router = Router();
 
@@ -24,10 +23,14 @@ const InputSchema = z.union([
 ]);
 
 const DistanceRequestSchema = z.object({
+  chainId: z.number().int().positive('chainId must be a positive integer'),
   from: InputSchema,
   to: InputSchema,
   schema: z.string().regex(/^0x[a-fA-F0-9]{64}$/, 'Invalid schema UID'),
-  recipient: z.string().regex(/^0x[a-fA-F0-9]{40}$/, 'Invalid recipient address'),
+  recipient: z.string()
+    .regex(/^0x[a-fA-F0-9]{40}$/, 'Invalid recipient address')
+    .optional()
+    .default('0x0000000000000000000000000000000000000000'),
 });
 
 /**
@@ -54,30 +57,29 @@ router.post('/', async (req, res, next) => {
 
     // Scale to centimeters for uint256
     const scaledResult = scaleToUint256(distanceMeters, SCALE_FACTORS.DISTANCE);
-    const timestamp = BigInt(Math.floor(Date.now() / 1000));
+    const timestamp = Math.floor(Date.now() / 1000);
 
     // Sign attestation
-    const attestation = await signNumericAttestation(
+    const signingResult = await signNumericAttestation(
       {
         result: scaledResult,
         units: UNITS.CENTIMETERS,
         inputRefs: [fromResolved.ref, toResolved.ref],
-        timestamp,
+        timestamp: BigInt(timestamp),
         operation: 'distance',
       },
       schema,
       recipient
     );
 
-    const response: ComputeResponse = {
-      attestation: toSerializableAttestation(attestation),
-      result: {
-        value: distanceMeters,
-        units: 'meters',
-      },
-      inputs: {
-        refs: [fromResolved.ref, toResolved.ref],
-      },
+    const response: NumericComputeResponse = {
+      result: distanceMeters,
+      units: 'meters',
+      operation: 'distance',
+      timestamp,
+      inputRefs: [fromResolved.ref, toResolved.ref],
+      attestation: signingResult.attestation,
+      delegatedAttestation: signingResult.delegatedAttestation,
     };
 
     res.json(response);

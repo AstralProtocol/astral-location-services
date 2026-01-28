@@ -5,8 +5,7 @@ import { resolveInput } from '../services/input-resolver.js';
 import { signNumericAttestation } from '../signing/attestation.js';
 import { UNITS, SCALE_FACTORS, scaleToUint256 } from '../signing/schemas.js';
 import { Errors } from '../middleware/error-handler.js';
-import type { ComputeResponse } from '../types/index.js';
-import { toSerializableAttestation } from '../types/index.js';
+import type { NumericComputeResponse } from '../types/index.js';
 
 const router = Router();
 
@@ -22,9 +21,13 @@ const InputSchema = z.union([
 ]);
 
 const AreaRequestSchema = z.object({
+  chainId: z.number().int().positive('chainId must be a positive integer'),
   geometry: InputSchema,
   schema: z.string().regex(/^0x[a-fA-F0-9]{64}$/, 'Invalid schema UID'),
-  recipient: z.string().regex(/^0x[a-fA-F0-9]{40}$/, 'Invalid recipient address'),
+  recipient: z.string()
+    .regex(/^0x[a-fA-F0-9]{40}$/, 'Invalid recipient address')
+    .optional()
+    .default('0x0000000000000000000000000000000000000000'),
 });
 
 /**
@@ -53,29 +56,28 @@ router.post('/', async (req, res, next) => {
 
     // Scale to square centimeters for uint256
     const scaledResult = scaleToUint256(areaSquareMeters, SCALE_FACTORS.AREA);
-    const timestamp = BigInt(Math.floor(Date.now() / 1000));
+    const timestamp = Math.floor(Date.now() / 1000);
 
-    const attestation = await signNumericAttestation(
+    const signingResult = await signNumericAttestation(
       {
         result: scaledResult,
         units: UNITS.SQUARE_CENTIMETERS,
         inputRefs: [resolved.ref],
-        timestamp,
+        timestamp: BigInt(timestamp),
         operation: 'area',
       },
       schema,
       recipient
     );
 
-    const response: ComputeResponse = {
-      attestation: toSerializableAttestation(attestation),
-      result: {
-        value: areaSquareMeters,
-        units: 'square_meters',
-      },
-      inputs: {
-        refs: [resolved.ref],
-      },
+    const response: NumericComputeResponse = {
+      result: areaSquareMeters,
+      units: 'square_meters',
+      operation: 'area',
+      timestamp,
+      inputRefs: [resolved.ref],
+      attestation: signingResult.attestation,
+      delegatedAttestation: signingResult.delegatedAttestation,
     };
 
     res.json(response);
