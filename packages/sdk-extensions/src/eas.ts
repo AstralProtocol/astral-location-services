@@ -65,6 +65,43 @@ export class AstralEAS {
   }
 
   /**
+   * Estimate gas for submitting a delegated attestation.
+   * @param attestation - The delegated attestation to estimate gas for
+   * @returns Estimated gas as bigint
+   */
+  async estimateGas(attestation: DelegatedAttestation): Promise<bigint> {
+    const { message, signature, attester } = attestation;
+
+    // Access the underlying contract for gas estimation
+    const contract = this.eas.contract;
+
+    // Build the attestation request data structure
+    const request = {
+      schema: message.schema,
+      data: {
+        recipient: message.recipient,
+        expirationTime: message.expirationTime,
+        revocable: message.revocable,
+        refUID: message.refUID,
+        data: message.data,
+        value: message.value,
+      },
+      signature: {
+        v: signature.v,
+        r: signature.r,
+        s: signature.s,
+      },
+      attester,
+      deadline: message.deadline,
+    };
+
+    // Use ethers contract's estimateGas method
+    const gasEstimate = await contract.attestByDelegation.estimateGas(request);
+
+    return gasEstimate;
+  }
+
+  /**
    * Get the EAS contract address being used.
    */
   getContractAddress(): string {
