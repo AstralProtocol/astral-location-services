@@ -1,4 +1,6 @@
 import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
 import { checkConnection } from './db/pool.js';
 import { initSigner, getSignerAddress } from './signing/attestation.js';
 import computeRoutes from './routes/index.js';
@@ -8,8 +10,14 @@ import { rateLimiter } from './middleware/rate-limit.js';
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
-app.use(express.json());
+// Security middleware
+app.use(helmet());
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGINS?.split(',') || '*',
+}));
+
+// Body parsing with size limit
+app.use(express.json({ limit: '1mb' }));
 app.use(rateLimiter);
 
 // Health check endpoint
