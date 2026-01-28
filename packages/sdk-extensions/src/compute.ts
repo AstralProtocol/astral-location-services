@@ -122,6 +122,18 @@ export class AstralCompute {
   }
 
   /**
+   * Check the health and availability of the Astral service.
+   * Returns status and database connection info.
+   */
+  async health(): Promise<{ status: string; database: string }> {
+    const response = await fetch(`${this.apiUrl}/health`);
+    if (!response.ok) {
+      throw new Error(`Health check failed: ${response.statusText}`);
+    }
+    return response.json() as Promise<{ status: string; database: string }>;
+  }
+
+  /**
    * Make a request to the compute service.
    */
   private async request(endpoint: string, body: object): Promise<unknown> {
@@ -130,7 +142,10 @@ export class AstralCompute {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify({
+        ...body,
+        chainId: this.chainId,
+      }),
     });
 
     if (!response.ok) {
