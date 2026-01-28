@@ -28,12 +28,17 @@ router.post('/', async (req, res, next) => {
     const result = await computeWithin(pointResolved.geometry, targetResolved.geometry, radius);
     const timestamp = Math.floor(Date.now() / 1000);
 
+    // Encode radius in centimeters in the operation string for attestation verification
+    // This ensures the radius parameter is included in the signed attestation data
+    const radiusCm = Math.round(radius * 100);
+    const operationWithRadius = `within:${radiusCm}`;
+
     const signingResult = await signBooleanAttestation(
       {
         result,
         inputRefs: [pointResolved.ref, targetResolved.ref],
         timestamp: BigInt(timestamp),
-        operation: 'within',
+        operation: operationWithRadius,
       },
       schema,
       recipient
@@ -41,7 +46,7 @@ router.post('/', async (req, res, next) => {
 
     const response: BooleanComputeResponse = {
       result,
-      operation: 'within',
+      operation: operationWithRadius,
       timestamp,
       inputRefs: [pointResolved.ref, targetResolved.ref],
       attestation: signingResult.attestation,
