@@ -1,6 +1,6 @@
 import { SchemaEncoder } from '@ethereum-attestation-service/eas-sdk';
 import { Wallet, keccak256, AbiCoder } from 'ethers';
-import type { DelegatedAttestationResponse, NumericPolicyAttestationData, BooleanPolicyAttestationData } from '../types/index.js';
+import type { SigningResult, NumericPolicyAttestationData, BooleanPolicyAttestationData } from '../types/index.js';
 import { NUMERIC_POLICY_SCHEMA, BOOLEAN_POLICY_SCHEMA } from './schemas.js';
 
 // EAS contract addresses by chain
@@ -46,7 +46,7 @@ export async function signNumericAttestation(
   data: NumericPolicyAttestationData,
   schemaUid: string,
   recipient: string
-): Promise<DelegatedAttestationResponse> {
+): Promise<SigningResult> {
   if (!signer) {
     throw new Error('Signer not initialized');
   }
@@ -70,7 +70,7 @@ export async function signBooleanAttestation(
   data: BooleanPolicyAttestationData,
   schemaUid: string,
   recipient: string
-): Promise<DelegatedAttestationResponse> {
+): Promise<SigningResult> {
   if (!signer) {
     throw new Error('Signer not initialized');
   }
@@ -88,18 +88,20 @@ export async function signBooleanAttestation(
 
 /**
  * Create and sign a delegated attestation.
+ * Returns split attestation and delegatedAttestation objects.
  */
 async function signDelegatedAttestation(
   encodedData: string,
   schemaUid: string,
   recipient: string
-): Promise<DelegatedAttestationResponse> {
+): Promise<SigningResult> {
   if (!signer) {
     throw new Error('Signer not initialized');
   }
 
   const currentNonce = nonce++;
-  const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600); // 1 hour from now
+  const deadlineTimestamp = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
+  const deadline = BigInt(deadlineTimestamp);
 
   const message = {
     schema: schemaUid,
@@ -135,18 +137,21 @@ async function signDelegatedAttestation(
     ],
   };
 
+  // Sign the typed data - returns combined signature as hex string
   const signature = await signer.signTypedData(domain, types, message);
 
-  // Split signature into r, s, v
-  const sig = {
-    r: signature.slice(0, 66),
-    s: '0x' + signature.slice(66, 130),
-    v: parseInt(signature.slice(130, 132), 16),
-  };
-
   return {
-    message,
-    signature: sig,
-    attester: signer.address,
+    attestation: {
+      schema: schemaUid,
+      attester: signer.address,
+      recipient,
+      data: encodedData,
+      signature, // Combined signature as hex string (r + s + v)
+    },
+    delegatedAttestation: {
+      signature, // Same signature, combined hex
+      attester: signer.address,
+      deadline: deadlineTimestamp, // Unix timestamp as number
+    },
   };
 }
