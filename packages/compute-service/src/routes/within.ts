@@ -4,8 +4,7 @@ import { computeWithin } from '../db/spatial.js';
 import { resolveInputs } from '../services/input-resolver.js';
 import { signBooleanAttestation } from '../signing/attestation.js';
 import { Errors } from '../middleware/error-handler.js';
-import type { ComputeResponse } from '../types/index.js';
-import { toSerializableAttestation } from '../types/index.js';
+import type { BooleanComputeResponse } from '../types/index.js';
 
 const router = Router();
 
@@ -21,11 +20,15 @@ const InputSchema = z.union([
 ]);
 
 const WithinRequestSchema = z.object({
+  chainId: z.number().int().positive('chainId must be a positive integer'),
   geometry: InputSchema,
   target: InputSchema,
   radius: z.number().positive('Radius must be positive'),
   schema: z.string().regex(/^0x[a-fA-F0-9]{64}$/, 'Invalid schema UID'),
-  recipient: z.string().regex(/^0x[a-fA-F0-9]{40}$/, 'Invalid recipient address'),
+  recipient: z.string()
+    .regex(/^0x[a-fA-F0-9]{40}$/, 'Invalid recipient address')
+    .optional()
+    .default('0x0000000000000000000000000000000000000000'),
 });
 
 /**
@@ -46,28 +49,26 @@ router.post('/', async (req, res, next) => {
     const [geometryResolved, targetResolved] = await resolveInputs([geometry, target]);
 
     const result = await computeWithin(geometryResolved.geometry, targetResolved.geometry, radius);
-    const timestamp = BigInt(Math.floor(Date.now() / 1000));
+    const timestamp = Math.floor(Date.now() / 1000);
 
-    const attestation = await signBooleanAttestation(
+    const signingResult = await signBooleanAttestation(
       {
         result,
         inputRefs: [geometryResolved.ref, targetResolved.ref],
-        timestamp,
+        timestamp: BigInt(timestamp),
         operation: 'within',
       },
       schema,
       recipient
     );
 
-    const response: ComputeResponse = {
-      attestation: toSerializableAttestation(attestation),
-      result: {
-        value: result ? 1 : 0,
-        units: 'boolean',
-      },
-      inputs: {
-        refs: [geometryResolved.ref, targetResolved.ref],
-      },
+    const response: BooleanComputeResponse = {
+      result,
+      operation: 'within',
+      timestamp,
+      inputRefs: [geometryResolved.ref, targetResolved.ref],
+      attestation: signingResult.attestation,
+      delegatedAttestation: signingResult.delegatedAttestation,
     };
 
     res.json(response);
