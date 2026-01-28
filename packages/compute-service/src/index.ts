@@ -28,18 +28,18 @@ app.get('/', (_req, res) => {
     version: '0.1.0',
     description: 'Verifiable geospatial computation service for Ethereum',
     endpoints: {
-      '/compute/distance': 'POST - Compute distance between two geometries',
-      '/compute/area': 'POST - Compute area of a polygon',
-      '/compute/length': 'POST - Compute length of a line',
-      '/compute/contains': 'POST - Check if geometry A contains geometry B',
-      '/compute/within': 'POST - Check if point is within radius of target',
-      '/compute/intersects': 'POST - Check if two geometries intersect',
+      '/compute/v0/distance': 'POST - Compute distance between two geometries',
+      '/compute/v0/area': 'POST - Compute area of a polygon',
+      '/compute/v0/length': 'POST - Compute length of a line',
+      '/compute/v0/contains': 'POST - Check if geometry A contains geometry B',
+      '/compute/v0/within': 'POST - Check if point is within radius of target',
+      '/compute/v0/intersects': 'POST - Check if two geometries intersect',
     },
   });
 });
 
 // Compute routes
-app.use('/compute', computeRoutes);
+app.use('/compute/v0', computeRoutes);
 
 // Error handler (must be last)
 app.use(errorHandler);
