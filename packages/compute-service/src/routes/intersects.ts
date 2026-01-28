@@ -4,8 +4,7 @@ import { computeIntersects } from '../db/spatial.js';
 import { resolveInputs } from '../services/input-resolver.js';
 import { signBooleanAttestation } from '../signing/attestation.js';
 import { Errors } from '../middleware/error-handler.js';
-import type { ComputeResponse } from '../types/index.js';
-import { toSerializableAttestation } from '../types/index.js';
+import type { BooleanComputeResponse } from '../types/index.js';
 
 const router = Router();
 
@@ -21,10 +20,14 @@ const InputSchema = z.union([
 ]);
 
 const IntersectsRequestSchema = z.object({
+  chainId: z.number().int().positive('chainId must be a positive integer'),
   geometry1: InputSchema,
   geometry2: InputSchema,
   schema: z.string().regex(/^0x[a-fA-F0-9]{64}$/, 'Invalid schema UID'),
-  recipient: z.string().regex(/^0x[a-fA-F0-9]{40}$/, 'Invalid recipient address'),
+  recipient: z.string()
+    .regex(/^0x[a-fA-F0-9]{40}$/, 'Invalid recipient address')
+    .optional()
+    .default('0x0000000000000000000000000000000000000000'),
 });
 
 /**
@@ -45,28 +48,26 @@ router.post('/', async (req, res, next) => {
     const [geom1Resolved, geom2Resolved] = await resolveInputs([geometry1, geometry2]);
 
     const result = await computeIntersects(geom1Resolved.geometry, geom2Resolved.geometry);
-    const timestamp = BigInt(Math.floor(Date.now() / 1000));
+    const timestamp = Math.floor(Date.now() / 1000);
 
-    const attestation = await signBooleanAttestation(
+    const signingResult = await signBooleanAttestation(
       {
         result,
         inputRefs: [geom1Resolved.ref, geom2Resolved.ref],
-        timestamp,
+        timestamp: BigInt(timestamp),
         operation: 'intersects',
       },
       schema,
       recipient
     );
 
-    const response: ComputeResponse = {
-      attestation: toSerializableAttestation(attestation),
-      result: {
-        value: result ? 1 : 0,
-        units: 'boolean',
-      },
-      inputs: {
-        refs: [geom1Resolved.ref, geom2Resolved.ref],
-      },
+    const response: BooleanComputeResponse = {
+      result,
+      operation: 'intersects',
+      timestamp,
+      inputRefs: [geom1Resolved.ref, geom2Resolved.ref],
+      attestation: signingResult.attestation,
+      delegatedAttestation: signingResult.delegatedAttestation,
     };
 
     res.json(response);
