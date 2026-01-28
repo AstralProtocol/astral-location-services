@@ -17,8 +17,28 @@ export class AstralCompute {
   private readonly chainId: number;
 
   constructor(config: AstralComputeConfig) {
-    this.apiUrl = config.apiUrl.replace(/\/$/, ''); // Remove trailing slash
+    this.apiUrl = config.apiUrl?.replace(/\/$/, '') ?? 'https://api.astral.global';
     this.chainId = config.chainId;
+  }
+
+  /**
+   * Normalize input to a format the API accepts.
+   * - Direct UID strings become { uid: string }
+   * - GeoJSON Features have their geometry extracted (runtime check for flexibility)
+   * - Everything else passes through
+   */
+  private normalizeInput(input: Input): object {
+    // Direct UID string
+    if (typeof input === 'string') {
+      return { uid: input };
+    }
+    // GeoJSON Feature - extract geometry
+    // This handles runtime cases where users pass Feature objects
+    if (typeof input === 'object' && 'type' in input && (input as { type: string }).type === 'Feature' && 'geometry' in input) {
+      return (input as { geometry: object }).geometry;
+    }
+    // Pass through as-is (Geometry, OnchainInput, OffchainInput)
+    return input as object;
   }
 
   /**
@@ -30,12 +50,12 @@ export class AstralCompute {
     to: Input,
     options: ComputeOptions
   ): Promise<NumericComputeResult> {
-    const response = await this.request('/compute/distance', {
-      from,
-      to,
-      ...options,
-    });
-    return response as NumericComputeResult;
+    return this.request('/compute/v0/distance', {
+      from: this.normalizeInput(from),
+      to: this.normalizeInput(to),
+      schema: options.schema,
+      recipient: options.recipient,
+    }) as Promise<NumericComputeResult>;
   }
 
   /**
@@ -46,11 +66,11 @@ export class AstralCompute {
     geometry: Input,
     options: ComputeOptions
   ): Promise<NumericComputeResult> {
-    const response = await this.request('/compute/area', {
-      geometry,
-      ...options,
-    });
-    return response as NumericComputeResult;
+    return this.request('/compute/v0/area', {
+      geometry: this.normalizeInput(geometry),
+      schema: options.schema,
+      recipient: options.recipient,
+    }) as Promise<NumericComputeResult>;
   }
 
   /**
@@ -61,11 +81,11 @@ export class AstralCompute {
     geometry: Input,
     options: ComputeOptions
   ): Promise<NumericComputeResult> {
-    const response = await this.request('/compute/length', {
-      geometry,
-      ...options,
-    });
-    return response as NumericComputeResult;
+    return this.request('/compute/v0/length', {
+      geometry: this.normalizeInput(geometry),
+      schema: options.schema,
+      recipient: options.recipient,
+    }) as Promise<NumericComputeResult>;
   }
 
   /**
@@ -77,31 +97,31 @@ export class AstralCompute {
     containee: Input,
     options: ComputeOptions
   ): Promise<BooleanComputeResult> {
-    const response = await this.request('/compute/contains', {
-      container,
-      containee,
-      ...options,
-    });
-    return response as BooleanComputeResult;
+    return this.request('/compute/v0/contains', {
+      container: this.normalizeInput(container),
+      containee: this.normalizeInput(containee),
+      schema: options.schema,
+      recipient: options.recipient,
+    }) as Promise<BooleanComputeResult>;
   }
 
   /**
-   * Check if a point is within a given radius (meters) of a target geometry.
+   * Check if a geometry is within a given radius (meters) of a target geometry.
    * Returns a boolean result with a signed attestation.
    */
   async within(
-    point: Input,
+    geometry: Input,
     target: Input,
     radius: number,
     options: ComputeOptions
   ): Promise<BooleanComputeResult> {
-    const response = await this.request('/compute/within', {
-      point,
-      target,
+    return this.request('/compute/v0/within', {
+      geometry: this.normalizeInput(geometry),
+      target: this.normalizeInput(target),
       radius,
-      ...options,
-    });
-    return response as BooleanComputeResult;
+      schema: options.schema,
+      recipient: options.recipient,
+    }) as Promise<BooleanComputeResult>;
   }
 
   /**
@@ -113,12 +133,12 @@ export class AstralCompute {
     geometry2: Input,
     options: ComputeOptions
   ): Promise<BooleanComputeResult> {
-    const response = await this.request('/compute/intersects', {
-      geometry1,
-      geometry2,
-      ...options,
-    });
-    return response as BooleanComputeResult;
+    return this.request('/compute/v0/intersects', {
+      geometry1: this.normalizeInput(geometry1),
+      geometry2: this.normalizeInput(geometry2),
+      schema: options.schema,
+      recipient: options.recipient,
+    }) as Promise<BooleanComputeResult>;
   }
 
   /**
@@ -143,8 +163,8 @@ export class AstralCompute {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        ...body,
         chainId: this.chainId,
+        ...body,
       }),
     });
 
@@ -158,16 +178,8 @@ export class AstralCompute {
 }
 
 /**
- * Create an AstralCompute instance with default configuration.
+ * Create an AstralCompute instance.
  */
-export function createAstralCompute(config: Partial<AstralComputeConfig> = {}): AstralCompute {
-  const defaultConfig: AstralComputeConfig = {
-    apiUrl: 'http://localhost:3000',
-    chainId: 84532, // Base Sepolia
-  };
-
-  return new AstralCompute({
-    ...defaultConfig,
-    ...config,
-  });
+export function createAstralCompute(config: AstralComputeConfig): AstralCompute {
+  return new AstralCompute(config);
 }
