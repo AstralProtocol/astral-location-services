@@ -21,7 +21,7 @@ router.post('/', async (req, res, next) => {
       throw Errors.invalidInput(parsed.error.message);
     }
 
-    const { geometry1, geometry2, schema, recipient } = parsed.data;
+    const { geometry1, geometry2, schema, recipient, chainId } = parsed.data;
 
     const [geom1Resolved, geom2Resolved] = await resolveInputs([geometry1, geometry2]);
 
@@ -36,7 +36,8 @@ router.post('/', async (req, res, next) => {
         operation: 'intersects',
       },
       schema,
-      recipient
+      recipient,
+      chainId
     );
 
     const response: BooleanComputeResponse = {

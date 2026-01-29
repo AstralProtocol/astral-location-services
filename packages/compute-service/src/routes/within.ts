@@ -21,7 +21,7 @@ router.post('/', async (req, res, next) => {
       throw Errors.invalidInput(parsed.error.message);
     }
 
-    const { geometry, target, radius, schema, recipient } = parsed.data;
+    const { geometry, target, radius, schema, recipient, chainId } = parsed.data;
 
     const [geometryResolved, targetResolved] = await resolveInputs([geometry, target]);
 
@@ -41,7 +41,8 @@ router.post('/', async (req, res, next) => {
         operation: operationWithRadius,
       },
       schema,
-      recipient
+      recipient,
+      chainId
     );
 
     const response: BooleanComputeResponse = {
