@@ -40,14 +40,7 @@
     }
 }
 
-# HTTP endpoint (optional, for health checks or redirects)
+# HTTP endpoint - proxy all requests to Node app
 :80 {
-    # Redirect to HTTPS only when host isn't localhost
-    @for_domain expression {host} != "localhost"
-    redir @for_domain https://{host}{uri} permanent
-
-    # Health check endpoint (always available via HTTP)
-    handle /health {
-        respond "OK" 200
-    }
+    reverse_proxy localhost:{$APP_PORT:3000}
 }
