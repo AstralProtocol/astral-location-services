@@ -6,8 +6,8 @@ import { Errors } from './error-handler.js';
  * Limits requests by IP address.
  */
 export const rateLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute window
-  max: 100, // 100 requests per minute per IP
+  windowMs: 60 * 60 * 1000, // 1 hour window
+  max: 100, // 100 requests per hour per IP
   standardHeaders: true,
   legacyHeaders: false,
   handler: (_req, res) => {
