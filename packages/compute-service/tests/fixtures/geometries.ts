@@ -103,6 +103,144 @@ export const SIMPLE_LINE = {
   ],
 };
 
+// ===========================================
+// EDGE CASE GEOMETRIES
+// ===========================================
+
+// Antimeridian crossing - line that crosses 180°/-180° longitude
+// This is tricky because naive implementations break here
+export const ANTIMERIDIAN_LINE = {
+  type: 'LineString' as const,
+  coordinates: [
+    [170, 0],   // East of antimeridian
+    [-170, 0],  // West of antimeridian (crossed!)
+  ],
+};
+
+// Polygon crossing antimeridian (Fiji straddles the line)
+export const ANTIMERIDIAN_POLYGON = {
+  type: 'Polygon' as const,
+  coordinates: [[
+    [177, -17],
+    [-179, -17],
+    [-179, -20],
+    [177, -20],
+    [177, -17],
+  ]],
+};
+
+// Polar region - point near North Pole
+export const NORTH_POLE_POINT = {
+  type: 'Point' as const,
+  coordinates: [0, 89.9], // Very close to pole
+};
+
+// Polar region - point near South Pole
+export const SOUTH_POLE_POINT = {
+  type: 'Point' as const,
+  coordinates: [0, -89.9],
+};
+
+// Antipodal points - opposite sides of Earth (~20,000 km apart)
+export const ANTIPODAL_POINT_A = {
+  type: 'Point' as const,
+  coordinates: [0, 0], // Null Island
+};
+
+export const ANTIPODAL_POINT_B = {
+  type: 'Point' as const,
+  coordinates: [180, 0], // Opposite side
+};
+
+// Null Island - 0,0 is a real coordinate, should work
+export const NULL_ISLAND = {
+  type: 'Point' as const,
+  coordinates: [0, 0],
+};
+
+// Polygon with hole (donut shape)
+// Outer ring is counter-clockwise, hole is clockwise (GeoJSON spec)
+export const POLYGON_WITH_HOLE = {
+  type: 'Polygon' as const,
+  coordinates: [
+    // Outer ring
+    [
+      [-122.5, 37.75],
+      [-122.4, 37.75],
+      [-122.4, 37.80],
+      [-122.5, 37.80],
+      [-122.5, 37.75],
+    ],
+    // Hole (clockwise)
+    [
+      [-122.48, 37.76],
+      [-122.48, 37.79],
+      [-122.42, 37.79],
+      [-122.42, 37.76],
+      [-122.48, 37.76],
+    ],
+  ],
+};
+
+// Point exactly on polygon boundary (edge case for contains)
+export const POINT_ON_BOUNDARY = {
+  type: 'Point' as const,
+  coordinates: [-122.5108, 37.772], // Exactly on west edge of Golden Gate Park
+};
+
+// Point on polygon vertex
+export const POINT_ON_VERTEX = {
+  type: 'Point' as const,
+  coordinates: [-122.5108, 37.7694], // SW corner of Golden Gate Park
+};
+
+// Self-intersecting polygon (bowtie/figure-8) - technically invalid but PostGIS accepts it
+export const SELF_INTERSECTING_POLYGON = {
+  type: 'Polygon' as const,
+  coordinates: [[
+    [-122.5, 37.75],
+    [-122.4, 37.80],  // These two edges
+    [-122.5, 37.80],  // cross each other
+    [-122.4, 37.75],
+    [-122.5, 37.75],
+  ]],
+};
+
+// Very small polygon (tests precision limits)
+// ~1 meter square
+export const TINY_POLYGON = {
+  type: 'Polygon' as const,
+  coordinates: [[
+    [-122.4194, 37.7749],
+    [-122.4194, 37.77491],      // ~1m north
+    [-122.41939, 37.77491],     // ~1m west
+    [-122.41939, 37.7749],
+    [-122.4194, 37.7749],
+  ]],
+};
+
+// Two points very close together (tests distance precision)
+export const CLOSE_POINT_A = {
+  type: 'Point' as const,
+  coordinates: [-122.4194, 37.7749],
+};
+
+export const CLOSE_POINT_B = {
+  type: 'Point' as const,
+  coordinates: [-122.4194, 37.77491], // ~1.1 meters north
+};
+
+// Coordinates that look like UTM (not WGS84) - large numbers
+// These are valid WGS84 but might indicate user error if context suggests UTM
+export const POSSIBLY_UTM_POINT = {
+  type: 'Point' as const,
+  coordinates: [37.7749, -122.4194], // Swapped lat/lon (common mistake)
+};
+
+// ===========================================
+// INVALID GEOMETRIES FOR ERROR TESTING
+// ===========================================
+
 // Invalid geometries for error testing
 export const INVALID_COORDINATES_OUT_OF_RANGE = {
   type: 'Point' as const,

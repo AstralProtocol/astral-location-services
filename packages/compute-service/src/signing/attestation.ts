@@ -173,6 +173,7 @@ async function signDelegatedAttestation(
       signature, // Same signature, combined hex
       attester: signer.address,
       deadline: deadlineTimestamp, // Unix timestamp as number
+      nonce: Number(currentNonce), // Nonce for verification & submission
     },
   };
 }

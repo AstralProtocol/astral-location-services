@@ -168,6 +168,7 @@ export interface DelegatedAttestationData {
   signature: string;   // Compact signature for delegation
   attester: string;    // Address of the delegated attester
   deadline: number;    // Unix timestamp deadline for submission
+  nonce: number;       // Nonce used in signature (needed for verification & submission)
 }
 
 // Result type from signing functions
