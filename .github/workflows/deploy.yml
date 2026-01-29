@@ -1,0 +1,252 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # ═══════════════════════════════════════════════════════════════════════════
+  # QUALITY GATES
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  lint:
+    name: Lint & Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+  test-unit:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: npm run test:unit
+
+  test-integration:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_USER: astral
+          POSTGRES_PASSWORD: astral
+          POSTGRES_DB: astral_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+        ports:
+          - 5433:5432
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Run integration tests
+        run: npm run test:integration
+        env:
+          DATABASE_URL: postgresql://astral:astral@localhost:5433/astral_test
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # BUILD DOCKER IMAGE
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  build:
+    name: Build Docker Image
+    needs: [lint, test-unit, test-integration]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      image-digest: ${{ steps.build.outputs.digest }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=
+            type=ref,event=branch
+            type=ref,event=pr
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: ./packages/compute-service
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # DEPLOY TO STAGING (Cloud Run)
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  deploy-staging:
+    name: Deploy to Staging
+    needs: [build]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: https://api-staging.astral.global
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Deploy to Cloud Run
+        id: deploy
+        run: |
+          gcloud run deploy astral-staging \
+            --image ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            --region us-central1 \
+            --platform managed \
+            --allow-unauthenticated \
+            --set-env-vars "NODE_ENV=production" \
+            --set-env-vars "CHAIN_ID=84532" \
+            --set-env-vars "ALLOWED_ORIGINS=https://staging.astral.global,https://astral.global,http://localhost:3000" \
+            --set-cloudsql-instances ${{ secrets.CLOUDSQL_CONNECTION_NAME }} \
+            --set-secrets "DATABASE_URL=astral-staging-db-url:latest" \
+            --set-secrets "SIGNER_PRIVATE_KEY=astral-staging-signer:latest" \
+            --min-instances 0 \
+            --max-instances 10 \
+            --memory 512Mi \
+            --cpu 1 \
+            --concurrency 80 \
+            --timeout 60
+
+      - name: Get staging URL
+        run: |
+          STAGING_URL=$(gcloud run services describe astral-staging --region us-central1 --format 'value(status.url)')
+          echo "STAGING_URL=${STAGING_URL}" >> $GITHUB_ENV
+
+      - name: Verify staging deployment
+        run: |
+          echo "Waiting for deployment to stabilize..."
+          sleep 10
+          echo "Testing health endpoint..."
+          curl -f "${STAGING_URL}/health" || exit 1
+          echo "Staging deployment verified!"
+
+      - name: Smoke test - API info
+        run: |
+          curl -s "${STAGING_URL}/" | jq .
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # DEPLOY TO PRODUCTION (EigenCloud)
+  # ═══════════════════════════════════════════════════════════════════════════
+
+  deploy-production:
+    name: Deploy to Production
+    needs: [deploy-staging]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://api.astral.global
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # Note: Update these steps based on actual EigenCloud CLI
+      # This is a placeholder that will need adjustment
+      - name: Install EigenCloud CLI
+        run: |
+          echo "Installing EigenCloud CLI..."
+          # curl -fsSL https://cli.eigencloud.io/install.sh | sh
+          # echo "$HOME/.eigencloud/bin" >> $GITHUB_PATH
+          echo "TODO: Add actual EigenCloud CLI installation"
+
+      - name: Deploy to EigenCloud
+        env:
+          EIGENCLOUD_API_KEY: ${{ secrets.EIGENCLOUD_API_KEY }}
+        run: |
+          echo "Deploying to EigenCloud TEE..."
+          # eigencloud deploy \
+          #   --image ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+          #   --name astral-compute \
+          #   --env NODE_ENV=production \
+          #   --env CHAIN_ID=84532 \
+          #   --secret SIGNER_PRIVATE_KEY \
+          #   --port 3000 \
+          #   --health-check /health
+          echo "TODO: Add actual EigenCloud deployment commands"
+
+      - name: Verify production deployment
+        run: |
+          echo "Waiting for deployment to stabilize..."
+          sleep 30
+          echo "Testing health endpoint..."
+          # curl -f "https://api.astral.global/health" || exit 1
+          echo "TODO: Add actual production verification"

@@ -9,7 +9,7 @@ services:
       - NODE_ENV=production
       - DATABASE_URL=postgresql://astral:astral@db:5432/astral
       - SIGNER_PRIVATE_KEY=${SIGNER_PRIVATE_KEY:-}
-      - EAS_CONTRACT_ADDRESS=${EAS_CONTRACT_ADDRESS:-}
+      - CHAIN_ID=${CHAIN_ID:-84532}
     depends_on:
       db:
         condition: service_healthy
