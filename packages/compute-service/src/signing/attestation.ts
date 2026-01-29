@@ -1,8 +1,17 @@
 import { SchemaEncoder } from '@ethereum-attestation-service/eas-sdk';
-import { Wallet, HDNodeWallet } from 'ethers';
+import { Wallet, HDNodeWallet, JsonRpcProvider, Contract } from 'ethers';
 import { Mutex } from 'async-mutex';
 import type { SigningResult, NumericPolicyAttestationData, BooleanPolicyAttestationData } from '../types/index.js';
 import { NUMERIC_POLICY_SCHEMA, BOOLEAN_POLICY_SCHEMA } from './schemas.js';
+
+// RPC URLs for nonce sync
+const RPC_URLS: Record<number, string> = {
+  84532: 'https://sepolia.base.org',
+  8453: 'https://mainnet.base.org',
+};
+
+// Minimal ABI for getNonce
+const EAS_ABI = ['function getNonce(address) view returns (uint256)'];
 
 // EAS contract addresses by chain
 const EAS_CONTRACT_ADDRESSES: Record<number, string> = {
@@ -66,6 +75,35 @@ export function initSignerFromMnemonic(mnemonic: string, chainId: number = 84532
  */
 export function setNonce(newNonce: bigint): void {
   nonce = newNonce;
+}
+
+/**
+ * Sync the nonce from the EAS contract.
+ * This ensures the server's nonce matches what EAS expects.
+ */
+export async function syncNonceFromEAS(): Promise<void> {
+  if (!signer) {
+    throw new Error('Signer not initialized');
+  }
+
+  const rpcUrl = RPC_URLS[currentChainId];
+  const easAddress = EAS_CONTRACT_ADDRESSES[currentChainId];
+
+  if (!rpcUrl || !easAddress) {
+    console.warn(`No RPC URL or EAS address for chain ${currentChainId}, skipping nonce sync`);
+    return;
+  }
+
+  try {
+    const provider = new JsonRpcProvider(rpcUrl);
+    const eas = new Contract(easAddress, EAS_ABI, provider);
+    const onchainNonce = await eas.getNonce(signer.address);
+    nonce = BigInt(onchainNonce);
+    console.log(`Nonce synced from EAS: ${nonce.toString()}`);
+  } catch (error) {
+    console.error('Failed to sync nonce from EAS:', error);
+    console.warn('Continuing with nonce 0 - attestation submissions may fail');
+  }
 }
 
 /**
