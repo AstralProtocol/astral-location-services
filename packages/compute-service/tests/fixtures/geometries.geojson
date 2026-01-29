@@ -117,6 +117,73 @@
           [-122.4394, 37.7749]
         ]
       }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "ANTIMERIDIAN_LINE", "description": "Line crossing 180/-180 longitude", "category": "edge-case" },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [[170, 0], [-170, 0]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "ANTIMERIDIAN_POLYGON", "description": "Polygon crossing antimeridian (like Fiji)", "category": "edge-case" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[177, -17], [-179, -17], [-179, -20], [177, -20], [177, -17]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "NORTH_POLE_POINT", "description": "Point near North Pole", "category": "edge-case" },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [0, 89.9]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "SOUTH_POLE_POINT", "description": "Point near South Pole", "category": "edge-case" },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [0, -89.9]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "NULL_ISLAND", "description": "0,0 coordinate (Null Island)", "category": "edge-case" },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [0, 0]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "POLYGON_WITH_HOLE", "description": "Donut-shaped polygon with hole", "category": "edge-case" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [[-122.5, 37.75], [-122.4, 37.75], [-122.4, 37.80], [-122.5, 37.80], [-122.5, 37.75]],
+          [[-122.48, 37.76], [-122.48, 37.79], [-122.42, 37.79], [-122.42, 37.76], [-122.48, 37.76]]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "POINT_ON_BOUNDARY", "description": "Point exactly on Golden Gate Park boundary", "category": "edge-case" },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-122.5108, 37.772]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "SELF_INTERSECTING_POLYGON", "description": "Bowtie/figure-8 self-intersecting polygon", "category": "edge-case" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[-122.5, 37.75], [-122.4, 37.80], [-122.5, 37.80], [-122.4, 37.75], [-122.5, 37.75]]]
+      }
     }
   ]
 }
