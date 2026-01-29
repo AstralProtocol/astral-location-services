@@ -4,12 +4,14 @@
 
 // Numeric policy attestation schema (for distance, area, length)
 // Result is scaled to integer (e.g., centimeters for distance)
+// Note: timestamp is uint256 to match registered schemas on EAS
 export const NUMERIC_POLICY_SCHEMA =
-  'uint256 result, string units, bytes32[] inputRefs, uint64 timestamp, string operation';
+  'uint256 result, string units, bytes32[] inputRefs, uint256 timestamp, string operation';
 
 // Boolean policy attestation schema (for contains, within, intersects)
+// Note: timestamp is uint256 to match registered schemas on EAS
 export const BOOLEAN_POLICY_SCHEMA =
-  'bool result, bytes32[] inputRefs, uint64 timestamp, string operation';
+  'bool result, bytes32[] inputRefs, uint256 timestamp, string operation';
 
 // Unit strings for numeric attestations
 export const UNITS = {

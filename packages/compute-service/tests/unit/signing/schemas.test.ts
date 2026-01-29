@@ -11,13 +11,13 @@ describe('Signing Schemas', () => {
   describe('Schema Definitions', () => {
     it('NUMERIC_POLICY_SCHEMA is correct', () => {
       expect(NUMERIC_POLICY_SCHEMA).toBe(
-        'uint256 result, string units, bytes32[] inputRefs, uint64 timestamp, string operation'
+        'uint256 result, string units, bytes32[] inputRefs, uint256 timestamp, string operation'
       );
     });
 
     it('BOOLEAN_POLICY_SCHEMA is correct', () => {
       expect(BOOLEAN_POLICY_SCHEMA).toBe(
-        'bool result, bytes32[] inputRefs, uint64 timestamp, string operation'
+        'bool result, bytes32[] inputRefs, uint256 timestamp, string operation'
       );
     });
   });

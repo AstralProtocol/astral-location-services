@@ -95,7 +95,7 @@ export async function signNumericAttestation(
     { name: 'result', value: data.result, type: 'uint256' },
     { name: 'units', value: data.units, type: 'string' },
     { name: 'inputRefs', value: data.inputRefs, type: 'bytes32[]' },
-    { name: 'timestamp', value: data.timestamp, type: 'uint64' },
+    { name: 'timestamp', value: data.timestamp, type: 'uint256' },
     { name: 'operation', value: data.operation, type: 'string' },
   ]);
 
@@ -118,7 +118,7 @@ export async function signBooleanAttestation(
   const encodedData = encoder.encodeData([
     { name: 'result', value: data.result, type: 'bool' },
     { name: 'inputRefs', value: data.inputRefs, type: 'bytes32[]' },
-    { name: 'timestamp', value: data.timestamp, type: 'uint64' },
+    { name: 'timestamp', value: data.timestamp, type: 'uint256' },
     { name: 'operation', value: data.operation, type: 'string' },
   ]);
 
