@@ -22,7 +22,7 @@ router.post('/', async (req, res, next) => {
       throw Errors.invalidInput(parsed.error.message);
     }
 
-    const { geometry, schema, recipient } = parsed.data;
+    const { geometry, schema, recipient, chainId } = parsed.data;
 
     const resolved = await resolveInput(geometry);
 
@@ -46,7 +46,8 @@ router.post('/', async (req, res, next) => {
         operation: 'area',
       },
       schema,
-      recipient
+      recipient,
+      chainId
     );
 
     const response: NumericComputeResponse = {

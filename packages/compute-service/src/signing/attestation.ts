@@ -66,7 +66,8 @@ export function getSignerAddress(): string {
 export async function signNumericAttestation(
   data: NumericPolicyAttestationData,
   schemaUid: string,
-  recipient: string
+  recipient: string,
+  chainId?: number
 ): Promise<SigningResult> {
   if (!signer) {
     throw new Error('Signer not initialized');
@@ -81,7 +82,7 @@ export async function signNumericAttestation(
     { name: 'operation', value: data.operation, type: 'string' },
   ]);
 
-  return signDelegatedAttestation(encodedData, schemaUid, recipient);
+  return signDelegatedAttestation(encodedData, schemaUid, recipient, chainId);
 }
 
 /**
@@ -90,7 +91,8 @@ export async function signNumericAttestation(
 export async function signBooleanAttestation(
   data: BooleanPolicyAttestationData,
   schemaUid: string,
-  recipient: string
+  recipient: string,
+  chainId?: number
 ): Promise<SigningResult> {
   if (!signer) {
     throw new Error('Signer not initialized');
@@ -104,17 +106,19 @@ export async function signBooleanAttestation(
     { name: 'operation', value: data.operation, type: 'string' },
   ]);
 
-  return signDelegatedAttestation(encodedData, schemaUid, recipient);
+  return signDelegatedAttestation(encodedData, schemaUid, recipient, chainId);
 }
 
 /**
  * Create and sign a delegated attestation.
  * Returns split attestation and delegatedAttestation objects.
+ * @param chainId - Optional chainId to use for signing. Falls back to global currentChainId.
  */
 async function signDelegatedAttestation(
   encodedData: string,
   schemaUid: string,
-  recipient: string
+  recipient: string,
+  chainId?: number
 ): Promise<SigningResult> {
   if (!signer) {
     throw new Error('Signer not initialized');
@@ -136,12 +140,15 @@ async function signDelegatedAttestation(
     deadline,
   };
 
+  // Use provided chainId or fall back to global currentChainId
+  const effectiveChainId = chainId ?? currentChainId;
+
   // Build EIP-712 typed data
   const domain = {
     name: EAS_DOMAIN_NAME,
     version: EAS_DOMAIN_VERSION,
-    chainId: currentChainId,
-    verifyingContract: EAS_CONTRACT_ADDRESSES[currentChainId],
+    chainId: effectiveChainId,
+    verifyingContract: EAS_CONTRACT_ADDRESSES[effectiveChainId],
   };
 
   const types = {

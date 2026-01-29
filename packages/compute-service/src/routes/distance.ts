@@ -23,7 +23,7 @@ router.post('/', async (req, res, next) => {
       throw Errors.invalidInput(parsed.error.message);
     }
 
-    const { from, to, schema, recipient } = parsed.data;
+    const { from, to, schema, recipient, chainId } = parsed.data;
 
     // Resolve inputs to geometries
     const [fromResolved, toResolved] = await resolveInputs([from, to]);
@@ -45,7 +45,8 @@ router.post('/', async (req, res, next) => {
         operation: 'distance',
       },
       schema,
-      recipient
+      recipient,
+      chainId
     );
 
     const response: NumericComputeResponse = {

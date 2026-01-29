@@ -21,7 +21,7 @@ router.post('/', async (req, res, next) => {
       throw Errors.invalidInput(parsed.error.message);
     }
 
-    const { container, containee, schema, recipient } = parsed.data;
+    const { container, containee, schema, recipient, chainId } = parsed.data;
 
     const [containerResolved, containeeResolved] = await resolveInputs([container, containee]);
 
@@ -36,7 +36,8 @@ router.post('/', async (req, res, next) => {
         operation: 'contains',
       },
       schema,
-      recipient
+      recipient,
+      chainId
     );
 
     const response: BooleanComputeResponse = {

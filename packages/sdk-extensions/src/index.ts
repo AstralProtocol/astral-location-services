@@ -1,6 +1,14 @@
 // Main SDK exports
 export { AstralCompute, createAstralCompute } from './compute.js';
-export { AstralEAS, createAstralEAS, submitDelegatedAttestation, type AttestationResult } from './eas.js';
+export {
+  AstralEAS,
+  createAstralEAS,
+  submitDelegatedAttestation,
+  submitFromApiResponse,
+  splitSignature,
+  type AttestationResult,
+  type SubmitFromApiResponseOptions,
+} from './eas.js';
 
 // Type exports
 export type {
@@ -12,6 +20,8 @@ export type {
   DelegatedAttestation,
   DelegatedAttestationMessage,
   DelegatedAttestationSignature,
+  AttestationObject,
+  DelegatedAttestationObject,
   NumericComputeResult,
   BooleanComputeResult,
   ComputeResult,

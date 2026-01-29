@@ -21,11 +21,11 @@ router.post('/', async (req, res, next) => {
       throw Errors.invalidInput(parsed.error.message);
     }
 
-    const { point, target, radius, schema, recipient } = parsed.data;
+    const { geometry, target, radius, schema, recipient, chainId } = parsed.data;
 
-    const [pointResolved, targetResolved] = await resolveInputs([point, target]);
+    const [geometryResolved, targetResolved] = await resolveInputs([geometry, target]);
 
-    const result = await computeWithin(pointResolved.geometry, targetResolved.geometry, radius);
+    const result = await computeWithin(geometryResolved.geometry, targetResolved.geometry, radius);
     const timestamp = Math.floor(Date.now() / 1000);
 
     // Encode radius in centimeters in the operation string for attestation verification
@@ -36,19 +36,20 @@ router.post('/', async (req, res, next) => {
     const signingResult = await signBooleanAttestation(
       {
         result,
-        inputRefs: [pointResolved.ref, targetResolved.ref],
+        inputRefs: [geometryResolved.ref, targetResolved.ref],
         timestamp: BigInt(timestamp),
         operation: operationWithRadius,
       },
       schema,
-      recipient
+      recipient,
+      chainId
     );
 
     const response: BooleanComputeResponse = {
       result,
       operation: operationWithRadius,
       timestamp,
-      inputRefs: [pointResolved.ref, targetResolved.ref],
+      inputRefs: [geometryResolved.ref, targetResolved.ref],
       attestation: signingResult.attestation,
       delegatedAttestation: signingResult.delegatedAttestation,
     };
