@@ -1,0 +1,122 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "name": "SF_POINT", "description": "San Francisco" },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-122.4194, 37.7749]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "NYC_POINT", "description": "New York City (Empire State Building)" },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-73.9857, 40.7484]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "LONDON_POINT", "description": "London" },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-0.1276, 51.5074]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "POINT_IN_PARK", "description": "Point inside Golden Gate Park" },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-122.48, 37.772]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "POINT_NEAR_PARK", "description": "Point outside park but nearby" },
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-122.42, 37.77]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "GOLDEN_GATE_PARK", "description": "Golden Gate Park polygon" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-122.5108, 37.7694],
+          [-122.4534, 37.7694],
+          [-122.4534, 37.7749],
+          [-122.5108, 37.7749],
+          [-122.5108, 37.7694]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "OVERLAPPING_POLYGON", "description": "Overlaps with Golden Gate Park" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-122.49, 37.77],
+          [-122.46, 37.77],
+          [-122.46, 37.78],
+          [-122.49, 37.78],
+          [-122.49, 37.77]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "DISJOINT_POLYGON", "description": "Does not intersect Golden Gate Park" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-122.40, 37.80],
+          [-122.38, 37.80],
+          [-122.38, 37.82],
+          [-122.40, 37.82],
+          [-122.40, 37.80]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "TWO_PARKS_MULTIPOLYGON", "description": "Two separate small parks (MultiPolygon for area tests)" },
+      "geometry": {
+        "type": "MultiPolygon",
+        "coordinates": [
+          [[
+            [-122.52, 37.76],
+            [-122.51, 37.76],
+            [-122.51, 37.77],
+            [-122.52, 37.77],
+            [-122.52, 37.76]
+          ]],
+          [[
+            [-122.50, 37.76],
+            [-122.49, 37.76],
+            [-122.49, 37.77],
+            [-122.50, 37.77],
+            [-122.50, 37.76]
+          ]]
+        ]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "SIMPLE_LINE", "description": "Simple 3-point line for length tests" },
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-122.4194, 37.7749],
+          [-122.4294, 37.7849],
+          [-122.4394, 37.7749]
+        ]
+      }
+    }
+  ]
+}

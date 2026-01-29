@@ -15,10 +15,19 @@
     "docker:down": "docker-compose down",
     "docker:logs": "docker-compose logs -f",
     "lint": "npm run lint --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:unit": "vitest run unit",
+    "test:integration": "vitest run integration",
+    "test:coverage": "vitest run --coverage",
+    "test:db:up": "docker-compose -f docker-compose.test.yml up -d && sleep 2",
+    "test:db:down": "docker-compose -f docker-compose.test.yml down -v"
   },
   "devDependencies": {
-    "typescript": "^5.7.3"
+    "@vitest/coverage-v8": "^4.0.18",
+    "typescript": "^5.7.3",
+    "vitest": "^4.0.18"
   },
   "engines": {
     "node": ">=20.0.0"
