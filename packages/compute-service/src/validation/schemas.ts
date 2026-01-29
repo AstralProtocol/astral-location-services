@@ -122,7 +122,7 @@ export const ContainsRequestSchema = BaseRequestSchema.extend({
 });
 
 export const WithinRequestSchema = BaseRequestSchema.extend({
-  point: InputSchema,
+  geometry: InputSchema,
   target: InputSchema,
   radius: z.number().positive('Radius must be positive'),
 });
