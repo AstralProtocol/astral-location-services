@@ -1,8 +1,8 @@
 services:
   compute:
     build:
-      context: ./packages/compute-service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: packages/compute-service/Dockerfile.staging
     ports:
       - "3000:3000"
     environment:

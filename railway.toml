@@ -1,5 +1,5 @@
 [build]
-dockerfilePath = "packages/compute-service/Dockerfile"
+dockerfilePath = "packages/compute-service/Dockerfile.staging"
 watchPatterns = ["packages/compute-service/**", "package.json", "package-lock.json"]
 
 [deploy]
