@@ -1,6 +1,6 @@
 [build]
 dockerfilePath = "packages/compute-service/Dockerfile"
-watchPatterns = ["packages/compute-service/**"]
+watchPatterns = ["packages/compute-service/**", "package.json", "package-lock.json"]
 
 [deploy]
 healthcheckPath = "/health"
