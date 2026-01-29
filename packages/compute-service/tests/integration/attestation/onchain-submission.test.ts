@@ -15,20 +15,45 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import request from 'supertest';
 import { ethers, JsonRpcProvider, Wallet, Contract } from 'ethers';
 import { createTestApp } from '../../helpers/test-server.js';
+import { setNonce } from '../../../src/signing/attestation.js';
 import {
   SF_POINT,
   NYC_POINT,
   makeRequest,
 } from '../../fixtures/geometries.js';
 
-// EAS contract on Base Sepolia
+// EAS contracts on Base Sepolia
 const EAS_CONTRACT_ADDRESS = '0x4200000000000000000000000000000000000021';
+const SCHEMA_REGISTRY_ADDRESS = '0x4200000000000000000000000000000000000020';
 
 // Minimal EAS ABI for attestByDelegation
 const EAS_ABI = [
   'function attestByDelegation((bytes32 schema, (address recipient, uint64 expirationTime, bool revocable, bytes32 refUID, bytes data, uint256 value) data, (uint8 v, bytes32 r, bytes32 s) signature, address attester, uint64 deadline) delegatedRequest) returns (bytes32)',
   'function getNonce(address account) view returns (uint256)',
 ];
+
+// SchemaRegistry ABI for registering schemas
+const SCHEMA_REGISTRY_ABI = [
+  'function register(string calldata schema, address resolver, bool revocable) external returns (bytes32)',
+  'function getSchema(bytes32 uid) external view returns ((bytes32 uid, address resolver, bool revocable, string schema))',
+  'event Registered(bytes32 indexed uid, address indexed registerer, (bytes32 uid, address resolver, bool revocable, string schema) schema)',
+];
+
+import { solidityPackedKeccak256 } from 'ethers';
+
+/**
+ * Compute the schema UID the same way EAS does.
+ * UID = keccak256(abi.encodePacked(schema, resolver, revocable))
+ */
+function computeSchemaUid(schema: string, resolver: string, revocable: boolean): string {
+  return solidityPackedKeccak256(
+    ['string', 'address', 'bool'],
+    [schema, resolver, revocable]
+  );
+}
+
+// Our attestation schemas
+import { NUMERIC_POLICY_SCHEMA } from '../../../src/signing/schemas.js';
 
 const app = createTestApp();
 
@@ -40,6 +65,8 @@ describeOnchain('Onchain Submission', () => {
   let provider: JsonRpcProvider;
   let submitter: Wallet;
   let easContract: Contract;
+  let schemaRegistry: Contract;
+  let registeredSchemaUid: string;
 
   beforeAll(async () => {
     // Connect to local fork or testnet
@@ -64,17 +91,57 @@ describeOnchain('Onchain Submission', () => {
     submitter = new Wallet(submitterKey, provider);
 
     easContract = new Contract(EAS_CONTRACT_ADDRESS, EAS_ABI, submitter);
+    schemaRegistry = new Contract(SCHEMA_REGISTRY_ADDRESS, SCHEMA_REGISTRY_ABI, submitter);
 
     // Verify we're connected
     const network = await provider.getNetwork();
     console.log(`Connected to chain ${network.chainId}`);
+
+    // Register our schema on the forked chain (or use existing if already registered)
+    console.log('Registering schema on forked chain...');
+    const resolver = '0x0000000000000000000000000000000000000000';
+    const revocable = true;
+
+    // Compute the expected schema UID (same as EAS does internally)
+    registeredSchemaUid = computeSchemaUid(NUMERIC_POLICY_SCHEMA, resolver, revocable);
+    console.log(`Expected schema UID: ${registeredSchemaUid}`);
+
+    // Check if schema already exists
+    try {
+      const existingSchema = await schemaRegistry.getSchema(registeredSchemaUid);
+      if (existingSchema.uid !== '0x0000000000000000000000000000000000000000000000000000000000000000') {
+        console.log('Schema already registered, using existing');
+      } else {
+        throw new Error('Schema not found');
+      }
+    } catch {
+      // Schema doesn't exist, register it
+      console.log('Schema not found, registering...');
+      const tx = await schemaRegistry.register(NUMERIC_POLICY_SCHEMA, resolver, revocable);
+      const receipt = await tx.wait();
+      console.log(`Schema registered in tx: ${receipt.hash}`);
+    }
   });
 
-  it('can submit a distance attestation to EAS', async () => {
-    // Get attestation from compute service
+  it('can submit a distance attestation to EAS', { timeout: 30000 }, async () => {
+    // Sync our service nonce with the contract nonce
+    // This is necessary because other tests may have incremented our internal nonce
+    const contractNonce = await easContract.getNonce(
+      '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266' // TEST_ATTESTER
+    );
+    setNonce(BigInt(contractNonce));
+    console.log(`Synced nonce to contract state: ${contractNonce}`);
+
+    // Get attestation from compute service using the REGISTERED schema UID
     const res = await request(app)
       .post('/compute/v0/distance')
-      .send(makeRequest({ from: SF_POINT, to: NYC_POINT }));
+      .send({
+        from: SF_POINT,
+        to: NYC_POINT,
+        chainId: 84532,
+        schema: registeredSchemaUid, // Use the schema we registered in beforeAll
+        recipient: '0x0000000000000000000000000000000000000001',
+      });
 
     expect(res.status).toBe(200);
 
