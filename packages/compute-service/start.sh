@@ -7,15 +7,21 @@ set -e
 # ============================================================================
 
 echo "Starting Astral Compute Service..."
+echo "Environment: NODE_ENV=$NODE_ENV"
 
 # ----------------------------------------------------------------------------
 # 1. Initialize and start PostgreSQL (as postgres user)
 # ----------------------------------------------------------------------------
 export PGDATA=${PGDATA:-/var/lib/postgresql/data}
+export PGLOG=/var/log/postgresql/postgresql.log
 
-# Ensure data directory exists and has correct permissions
+# Ensure directories exist and have correct permissions
 mkdir -p "$PGDATA"
+mkdir -p /var/log/postgresql
+mkdir -p /var/run/postgresql
 chown -R postgres:postgres "$PGDATA"
+chown -R postgres:postgres /var/log/postgresql
+chown -R postgres:postgres /var/run/postgresql
 chmod 700 "$PGDATA"
 
 # Initialize database if not already done
@@ -27,11 +33,37 @@ if [ ! -s "$PGDATA/PG_VERSION" ]; then
     # Configure PostgreSQL for local connections
     echo "host all all 127.0.0.1/32 md5" >> "$PGDATA/pg_hba.conf"
     echo "local all all trust" >> "$PGDATA/pg_hba.conf"
+
+    # Configure PostgreSQL for low memory / TEE environment
+    # These settings reduce shared memory requirements
+    cat >> "$PGDATA/postgresql.conf" << 'PGCONF'
+# TEE-optimized settings (low shared memory)
+shared_buffers = 32MB
+work_mem = 4MB
+maintenance_work_mem = 32MB
+effective_cache_size = 128MB
+max_connections = 20
+dynamic_shared_memory_type = posix
+# Disable features we don't need
+wal_level = minimal
+max_wal_senders = 0
+fsync = off
+synchronous_commit = off
+full_page_writes = off
+PGCONF
 fi
 
-# Start PostgreSQL in the background
+# Start PostgreSQL in the background with longer timeout
 echo "Starting PostgreSQL..."
-su postgres -c "pg_ctl -D '$PGDATA' -o '-c listen_addresses=localhost' -l /var/log/postgresql/postgresql.log start"
+echo "PGDATA: $PGDATA"
+echo "Log file: $PGLOG"
+
+# Start postgres directly (not via pg_ctl) for better error visibility
+su postgres -c "pg_ctl -D '$PGDATA' -l '$PGLOG' -w -t 60 start -o '-c listen_addresses=localhost'" || {
+    echo "PostgreSQL failed to start. Log output:"
+    cat "$PGLOG" 2>/dev/null || echo "No log file found"
+    exit 1
+}
 
 # ----------------------------------------------------------------------------
 # 2. Wait for PostgreSQL and set up database
