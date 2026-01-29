@@ -1,15 +1,17 @@
 /**
- * Onchain submission verification tests.
+ * Onchain submission verification tests (LOCAL FORK ONLY).
  *
  * These tests verify that attestations produced by the compute service
  * can actually be submitted to the EAS contract onchain.
  *
  * REQUIREMENTS:
- * - These tests require a forked Base Sepolia network running locally
+ * - Anvil running with a forked Base Sepolia network
  * - Start with: anvil --fork-url https://sepolia.base.org
- * - Or use a real testnet RPC with sufficient ETH for gas
  *
- * SKIPPED BY DEFAULT: Set RUN_ONCHAIN_TESTS=true to enable
+ * These tests run against a LOCAL Anvil fork, not a public testnet.
+ * No real gas or testnet ETH is required.
+ *
+ * SKIPPED BY DEFAULT: Set RUN_LOCAL_FORK_TESTS=true to enable
  */
 import { describe, it, expect, beforeAll } from 'vitest';
 import request from 'supertest';
@@ -57,11 +59,12 @@ import { NUMERIC_POLICY_SCHEMA } from '../../../src/signing/schemas.js';
 
 const app = createTestApp();
 
-// Skip these tests unless explicitly enabled
-const SKIP_ONCHAIN = process.env.RUN_ONCHAIN_TESTS !== 'true';
-const describeOnchain = SKIP_ONCHAIN ? describe.skip : describe;
+// Skip these tests unless Anvil fork is running
+// Set RUN_LOCAL_FORK_TESTS=true when running with `anvil --fork-url https://sepolia.base.org`
+const SKIP_LOCAL_FORK = process.env.RUN_LOCAL_FORK_TESTS !== 'true';
+const describeLocalFork = SKIP_LOCAL_FORK ? describe.skip : describe;
 
-describeOnchain('Onchain Submission', () => {
+describeLocalFork('Local Fork Submission', () => {
   let provider: JsonRpcProvider;
   let submitter: Wallet;
   let easContract: Contract;
@@ -69,8 +72,8 @@ describeOnchain('Onchain Submission', () => {
   let registeredSchemaUid: string;
 
   beforeAll(async () => {
-    // Connect to local fork or testnet
-    const rpcUrl = process.env.FORK_RPC_URL || 'http://127.0.0.1:8545';
+    // Connect to local Anvil fork (default Anvil port)
+    const rpcUrl = process.env.ANVIL_RPC_URL || 'http://127.0.0.1:8545';
     provider = new JsonRpcProvider(rpcUrl);
 
     /**
