@@ -1,5 +1,7 @@
 # Astral Location Services
 
+> ⚠️ **Development Preview** - This project is under active development and not yet production-ready. APIs may change. See the `develop` branch for latest work; `main` will be used for stable releases.
+
 **Verifiable geospatial computation for Ethereum** - Run spatial operations in a TEE and get signed attestations for onchain use.
 
 Astral Location Services is a geospatial computation oracle that makes location-based smart contracts possible. Perform spatial operations (distance, containment, intersection) and get back signed attestations you can register on EAS. Using EAS resolvers, these policy attestations can be connected to any smart contract.

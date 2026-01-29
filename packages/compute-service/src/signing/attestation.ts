@@ -1,6 +1,7 @@
 import { SchemaEncoder } from '@ethereum-attestation-service/eas-sdk';
 import { Wallet, keccak256, AbiCoder } from 'ethers';
-import type { DelegatedAttestationResponse, NumericPolicyAttestationData, BooleanPolicyAttestationData } from '../types/index.js';
+import { Mutex } from 'async-mutex';
+import type { SigningResult, NumericPolicyAttestationData, BooleanPolicyAttestationData } from '../types/index.js';
 import { NUMERIC_POLICY_SCHEMA, BOOLEAN_POLICY_SCHEMA } from './schemas.js';
 
 // EAS contract addresses by chain
@@ -19,6 +20,26 @@ const ATTEST_TYPE_HASH = keccak256(
 let signer: Wallet | null = null;
 let currentChainId = 84532; // Default to Base Sepolia
 let nonce = 0n;
+const nonceMutex = new Mutex();
+
+// Cache for SchemaEncoder instances to avoid recreation per request
+const encoderCache = new Map<string, SchemaEncoder>();
+
+function getEncoder(schema: string): SchemaEncoder {
+  let encoder = encoderCache.get(schema);
+  if (!encoder) {
+    encoder = new SchemaEncoder(schema);
+    encoderCache.set(schema, encoder);
+  }
+  return encoder;
+}
+
+/**
+ * Get the next nonce in a thread-safe manner.
+ */
+async function getNextNonce(): Promise<bigint> {
+  return nonceMutex.runExclusive(() => nonce++);
+}
 
 /**
  * Initialize the signing service with a private key.
@@ -46,12 +67,12 @@ export async function signNumericAttestation(
   data: NumericPolicyAttestationData,
   schemaUid: string,
   recipient: string
-): Promise<DelegatedAttestationResponse> {
+): Promise<SigningResult> {
   if (!signer) {
     throw new Error('Signer not initialized');
   }
 
-  const encoder = new SchemaEncoder(NUMERIC_POLICY_SCHEMA);
+  const encoder = getEncoder(NUMERIC_POLICY_SCHEMA);
   const encodedData = encoder.encodeData([
     { name: 'result', value: data.result, type: 'uint256' },
     { name: 'units', value: data.units, type: 'string' },
@@ -70,12 +91,12 @@ export async function signBooleanAttestation(
   data: BooleanPolicyAttestationData,
   schemaUid: string,
   recipient: string
-): Promise<DelegatedAttestationResponse> {
+): Promise<SigningResult> {
   if (!signer) {
     throw new Error('Signer not initialized');
   }
 
-  const encoder = new SchemaEncoder(BOOLEAN_POLICY_SCHEMA);
+  const encoder = getEncoder(BOOLEAN_POLICY_SCHEMA);
   const encodedData = encoder.encodeData([
     { name: 'result', value: data.result, type: 'bool' },
     { name: 'inputRefs', value: data.inputRefs, type: 'bytes32[]' },
@@ -88,18 +109,20 @@ export async function signBooleanAttestation(
 
 /**
  * Create and sign a delegated attestation.
+ * Returns split attestation and delegatedAttestation objects.
  */
 async function signDelegatedAttestation(
   encodedData: string,
   schemaUid: string,
   recipient: string
-): Promise<DelegatedAttestationResponse> {
+): Promise<SigningResult> {
   if (!signer) {
     throw new Error('Signer not initialized');
   }
 
-  const currentNonce = nonce++;
-  const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600); // 1 hour from now
+  const currentNonce = await getNextNonce();
+  const deadlineTimestamp = Math.floor(Date.now() / 1000) + 3600; // 1 hour from now
+  const deadline = BigInt(deadlineTimestamp);
 
   const message = {
     schema: schemaUid,
@@ -135,18 +158,21 @@ async function signDelegatedAttestation(
     ],
   };
 
+  // Sign the typed data - returns combined signature as hex string
   const signature = await signer.signTypedData(domain, types, message);
 
-  // Split signature into r, s, v
-  const sig = {
-    r: signature.slice(0, 66),
-    s: '0x' + signature.slice(66, 130),
-    v: parseInt(signature.slice(130, 132), 16),
-  };
-
   return {
-    message,
-    signature: sig,
-    attester: signer.address,
+    attestation: {
+      schema: schemaUid,
+      attester: signer.address,
+      recipient,
+      data: encodedData,
+      signature, // Combined signature as hex string (r + s + v)
+    },
+    delegatedAttestation: {
+      signature, // Same signature, combined hex
+      attester: signer.address,
+      deadline: deadlineTimestamp, // Unix timestamp as number
+    },
   };
 }

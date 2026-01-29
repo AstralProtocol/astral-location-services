@@ -26,3 +26,4 @@ Thumbs.db
 # Logs
 *.log
 npm-debug.log*
+.jscpd-output/
