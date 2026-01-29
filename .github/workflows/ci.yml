@@ -79,7 +79,8 @@ jobs:
       - name: Build Docker image (no push)
         uses: docker/build-push-action@v5
         with:
-          context: ./packages/compute-service
+          context: .
+          file: ./packages/compute-service/Dockerfile
           push: false
           cache-from: type=gha
           platforms: linux/amd64
