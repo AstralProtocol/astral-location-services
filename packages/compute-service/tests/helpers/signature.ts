@@ -6,7 +6,7 @@ import { verifyTypedData } from 'ethers';
 // EAS domain for signature verification - must match what the service uses
 export const EAS_DOMAIN = {
   name: 'EAS',
-  version: '1.0.0',
+  version: '1.2.0', // Must match deployed EAS contract version
   chainId: 84532, // Base Sepolia
   verifyingContract: '0x4200000000000000000000000000000000000021',
 };

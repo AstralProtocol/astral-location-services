@@ -12,7 +12,7 @@ const EAS_CONTRACT_ADDRESSES: Record<number, string> = {
 
 // Domain separator constants
 const EAS_DOMAIN_NAME = 'EAS';
-const EAS_DOMAIN_VERSION = '1.0.0';
+const EAS_DOMAIN_VERSION = '1.2.0'; // Must match deployed EAS contract version
 const ATTEST_TYPE_HASH = keccak256(
   Buffer.from('Attest(bytes32 schema,address recipient,uint64 expirationTime,bool revocable,bytes32 refUID,bytes data,uint256 value,uint256 nonce,uint64 deadline)')
 );
@@ -43,11 +43,21 @@ async function getNextNonce(): Promise<bigint> {
 
 /**
  * Initialize the signing service with a private key.
+ * Optionally set the starting nonce (useful for syncing with contract state).
  */
-export function initSigner(privateKey: string, chainId: number = 84532): void {
+export function initSigner(privateKey: string, chainId: number = 84532, startingNonce: bigint = 0n): void {
   signer = new Wallet(privateKey);
   currentChainId = chainId;
-  console.log('Attestation signer initialized:', signer.address);
+  nonce = startingNonce;
+  console.log('Attestation signer initialized:', signer.address, 'nonce:', nonce.toString());
+}
+
+/**
+ * Set the nonce to a specific value.
+ * Used for syncing with contract state or testing.
+ */
+export function setNonce(newNonce: bigint): void {
+  nonce = newNonce;
 }
 
 /**
