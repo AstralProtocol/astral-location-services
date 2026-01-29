@@ -150,7 +150,71 @@ export interface BooleanPolicyAttestationData {
   operation: string;
 }
 
-export interface ComputeResponse {
+// ============================================
+// Flat Compute Response Types (API responses)
+// ============================================
+
+// Reusable nested interface for attestation data
+export interface AttestationData {
+  schema: string;      // EAS schema UID
+  attester: string;    // Address of the attester
+  recipient: string;   // Address to receive the attestation
+  data: string;        // ABI-encoded attestation data
+  signature: string;   // Compact signature (r + s + v)
+}
+
+// Reusable nested interface for delegated attestation
+export interface DelegatedAttestationData {
+  signature: string;   // Compact signature for delegation
+  attester: string;    // Address of the delegated attester
+  deadline: number;    // Unix timestamp deadline for submission
+}
+
+// Result type from signing functions
+export interface SigningResult {
+  attestation: AttestationData;
+  delegatedAttestation: DelegatedAttestationData;
+}
+
+// Response for numeric operations (distance, area, length)
+export interface NumericComputeResponse {
+  result: number;                        // e.g., 523.45
+  units: string;                         // "meters" | "square_meters"
+  operation: string;                     // "distance" | "area" | "length"
+  timestamp: number;                     // Unix timestamp (seconds)
+  inputRefs: string[];                   // ["0x...", "0x..."]
+  attestation: AttestationData;
+  delegatedAttestation: DelegatedAttestationData;
+}
+
+// Response for boolean operations (contains, within, intersects)
+export interface BooleanComputeResponse {
+  result: boolean;                       // true | false
+  operation: string;                     // "contains" | "within" | "intersects"
+  timestamp: number;                     // Unix timestamp (seconds)
+  inputRefs: string[];                   // ["0x...", "0x..."]
+  attestation: AttestationData;
+  delegatedAttestation: DelegatedAttestationData;
+}
+
+// Union type for all compute responses
+export type ComputeResponse = NumericComputeResponse | BooleanComputeResponse;
+
+// Type guard to distinguish numeric from boolean responses
+export function isNumericResponse(response: ComputeResponse): response is NumericComputeResponse {
+  return typeof response.result === 'number';
+}
+
+export function isBooleanResponse(response: ComputeResponse): response is BooleanComputeResponse {
+  return typeof response.result === 'boolean';
+}
+
+// ============================================
+// Legacy response type (deprecated)
+// ============================================
+
+/** @deprecated Use NumericComputeResponse or BooleanComputeResponse instead */
+export interface LegacyComputeResponse {
   attestation: SerializableAttestationResponse;
   result: {
     value: number;

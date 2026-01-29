@@ -1,4 +1,5 @@
 import { keccak256, toUtf8Bytes } from 'ethers';
+import stableStringify from 'fast-json-stable-stringify';
 import type { Input, ResolvedInput, RawGeometryInput } from '../types/index.js';
 import { isRawGeometry, isOnchainInput, isOffchainInput } from '../types/index.js';
 
@@ -32,7 +33,8 @@ export async function resolveInput(input: Input): Promise<ResolvedInput> {
  */
 function resolveRawGeometry(geometry: RawGeometryInput): ResolvedInput {
   // Canonical JSON serialization for consistent hashing
-  const canonical = JSON.stringify(geometry, Object.keys(geometry).sort());
+  // Uses fast-json-stable-stringify which handles deep key sorting
+  const canonical = stableStringify(geometry);
   const ref = keccak256(toUtf8Bytes(canonical));
 
   return {

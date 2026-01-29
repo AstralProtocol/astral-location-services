@@ -1,31 +1,13 @@
 import { Router } from 'express';
-import { z } from 'zod';
 import { computeArea } from '../db/spatial.js';
 import { resolveInput } from '../services/input-resolver.js';
 import { signNumericAttestation } from '../signing/attestation.js';
 import { UNITS, SCALE_FACTORS, scaleToUint256 } from '../signing/schemas.js';
 import { Errors } from '../middleware/error-handler.js';
-import type { ComputeResponse } from '../types/index.js';
-import { toSerializableAttestation } from '../types/index.js';
+import { AreaRequestSchema } from '../validation/schemas.js';
+import type { NumericComputeResponse } from '../types/index.js';
 
 const router = Router();
-
-const GeometrySchema = z.object({
-  type: z.enum(['Point', 'MultiPoint', 'LineString', 'MultiLineString', 'Polygon', 'MultiPolygon', 'GeometryCollection']),
-  coordinates: z.any(),
-}).passthrough();
-
-const InputSchema = z.union([
-  GeometrySchema,
-  z.object({ uid: z.string() }),
-  z.object({ uid: z.string(), uri: z.string().url() }),
-]);
-
-const AreaRequestSchema = z.object({
-  geometry: InputSchema,
-  schema: z.string().regex(/^0x[a-fA-F0-9]{64}$/, 'Invalid schema UID'),
-  recipient: z.string().regex(/^0x[a-fA-F0-9]{40}$/, 'Invalid recipient address'),
-});
 
 /**
  * POST /compute/area
@@ -40,7 +22,7 @@ router.post('/', async (req, res, next) => {
       throw Errors.invalidInput(parsed.error.message);
     }
 
-    const { geometry, schema, recipient } = parsed.data;
+    const { geometry, schema, recipient, chainId } = parsed.data;
 
     const resolved = await resolveInput(geometry);
 
@@ -53,29 +35,29 @@ router.post('/', async (req, res, next) => {
 
     // Scale to square centimeters for uint256
     const scaledResult = scaleToUint256(areaSquareMeters, SCALE_FACTORS.AREA);
-    const timestamp = BigInt(Math.floor(Date.now() / 1000));
+    const timestamp = Math.floor(Date.now() / 1000);
 
-    const attestation = await signNumericAttestation(
+    const signingResult = await signNumericAttestation(
       {
         result: scaledResult,
         units: UNITS.SQUARE_CENTIMETERS,
         inputRefs: [resolved.ref],
-        timestamp,
+        timestamp: BigInt(timestamp),
         operation: 'area',
       },
       schema,
-      recipient
+      recipient,
+      chainId
     );
 
-    const response: ComputeResponse = {
-      attestation: toSerializableAttestation(attestation),
-      result: {
-        value: areaSquareMeters,
-        units: 'square_meters',
-      },
-      inputs: {
-        refs: [resolved.ref],
-      },
+    const response: NumericComputeResponse = {
+      result: areaSquareMeters,
+      units: 'square_meters',
+      operation: 'area',
+      timestamp,
+      inputRefs: [resolved.ref],
+      attestation: signingResult.attestation,
+      delegatedAttestation: signingResult.delegatedAttestation,
     };
 
     res.json(response);

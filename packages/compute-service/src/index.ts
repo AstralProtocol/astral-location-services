@@ -1,4 +1,6 @@
 import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
 import { checkConnection } from './db/pool.js';
 import { initSigner, getSignerAddress } from './signing/attestation.js';
 import computeRoutes from './routes/index.js';
@@ -8,8 +10,14 @@ import { rateLimiter } from './middleware/rate-limit.js';
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
-app.use(express.json());
+// Security middleware
+app.use(helmet());
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGINS?.split(',') || '*',
+}));
+
+// Body parsing with size limit
+app.use(express.json({ limit: '1mb' }));
 app.use(rateLimiter);
 
 // Health check endpoint
@@ -28,18 +36,18 @@ app.get('/', (_req, res) => {
     version: '0.1.0',
     description: 'Verifiable geospatial computation service for Ethereum',
     endpoints: {
-      '/compute/distance': 'POST - Compute distance between two geometries',
-      '/compute/area': 'POST - Compute area of a polygon',
-      '/compute/length': 'POST - Compute length of a line',
-      '/compute/contains': 'POST - Check if geometry A contains geometry B',
-      '/compute/within': 'POST - Check if point is within radius of target',
-      '/compute/intersects': 'POST - Check if two geometries intersect',
+      '/compute/v0/distance': 'POST - Compute distance between two geometries',
+      '/compute/v0/area': 'POST - Compute area of a polygon',
+      '/compute/v0/length': 'POST - Compute length of a line',
+      '/compute/v0/contains': 'POST - Check if geometry A contains geometry B',
+      '/compute/v0/within': 'POST - Check if point is within radius of target',
+      '/compute/v0/intersects': 'POST - Check if two geometries intersect',
     },
   });
 });
 
 // Compute routes
-app.use('/compute', computeRoutes);
+app.use('/compute/v0', computeRoutes);
 
 // Error handler (must be last)
 app.use(errorHandler);
