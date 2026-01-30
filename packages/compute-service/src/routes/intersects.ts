@@ -32,7 +32,7 @@ router.post('/', async (req, res, next) => {
       );
     }
 
-    const [geom1Resolved, geom2Resolved] = await resolveInputs([geometry1, geometry2]);
+    const [geom1Resolved, geom2Resolved] = await resolveInputs([geometry1, geometry2], { chainId });
 
     const result = await computeIntersects(geom1Resolved.geometry, geom2Resolved.geometry);
     const timestamp = Math.floor(Date.now() / 1000);

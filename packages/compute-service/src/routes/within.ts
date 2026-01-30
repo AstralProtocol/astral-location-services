@@ -32,7 +32,7 @@ router.post('/', async (req, res, next) => {
       );
     }
 
-    const [geometryResolved, targetResolved] = await resolveInputs([geometry, target]);
+    const [geometryResolved, targetResolved] = await resolveInputs([geometry, target], { chainId });
 
     const result = await computeWithin(geometryResolved.geometry, targetResolved.geometry, radius);
     const timestamp = Math.floor(Date.now() / 1000);

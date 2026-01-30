@@ -32,7 +32,7 @@ router.post('/', async (req, res, next) => {
       );
     }
 
-    const [containerResolved, containeeResolved] = await resolveInputs([container, containee]);
+    const [containerResolved, containeeResolved] = await resolveInputs([container, containee], { chainId });
 
     const result = await computeContains(containerResolved.geometry, containeeResolved.geometry);
     const timestamp = Math.floor(Date.now() / 1000);

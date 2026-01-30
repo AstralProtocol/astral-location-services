@@ -35,7 +35,7 @@ router.post('/', async (req, res, next) => {
     }
 
     // Resolve inputs to geometries
-    const [fromResolved, toResolved] = await resolveInputs([from, to]);
+    const [fromResolved, toResolved] = await resolveInputs([from, to], { chainId });
 
     // Compute distance via PostGIS
     const distanceMeters = await computeDistance(fromResolved.geometry, toResolved.geometry);

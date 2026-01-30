@@ -33,7 +33,7 @@ router.post('/', async (req, res, next) => {
       );
     }
 
-    const resolved = await resolveInput(geometry);
+    const resolved = await resolveInput(geometry, { chainId });
 
     // Validate geometry type
     if (!['Polygon', 'MultiPolygon'].includes(resolved.geometry.type)) {
