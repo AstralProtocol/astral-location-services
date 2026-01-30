@@ -43,10 +43,10 @@ describe('Input Resolver', () => {
       expect(result.ref).toMatch(/^0x[a-f0-9]{64}$/);
     });
 
-    it('throws for onchain UID input (not yet implemented)', async () => {
+    it('throws for onchain UID input without chainId', async () => {
       const uidInput = { uid: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef' };
 
-      await expect(resolveInput(uidInput)).rejects.toThrow('Onchain UID resolution not yet implemented');
+      await expect(resolveInput(uidInput)).rejects.toThrow('chainId is required for onchain UID resolution');
     });
 
     it('throws for offchain attestation input (not yet implemented)', async () => {
