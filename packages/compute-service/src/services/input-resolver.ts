@@ -80,7 +80,7 @@ async function resolveOnchainInput(input: OnchainInput, chainId: number): Promis
   let locationData;
   try {
     locationData = decodeLocationAttestation(attestation.data);
-  } catch (error) {
+  } catch {
     throw Errors.invalidInput(
       `Failed to decode attestation ${input.uid}: not a valid Location Protocol attestation`
     );
