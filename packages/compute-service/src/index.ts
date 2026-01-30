@@ -11,6 +11,10 @@ import { rateLimiter } from './middleware/rate-limit.js';
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Trust proxy for deployments behind reverse proxies (Railway, Heroku, etc.)
+// This is required for express-rate-limit to correctly identify client IPs
+app.set('trust proxy', 1);
+
 // Security middleware
 app.use(helmet());
 app.use(cors({
