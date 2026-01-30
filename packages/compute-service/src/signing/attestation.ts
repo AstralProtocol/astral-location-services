@@ -1,6 +1,5 @@
 import { SchemaEncoder } from '@ethereum-attestation-service/eas-sdk';
 import { Wallet, HDNodeWallet, JsonRpcProvider, Contract } from 'ethers';
-import { Mutex } from 'async-mutex';
 import type { SigningResult, NumericPolicyAttestationData, BooleanPolicyAttestationData } from '../types/index.js';
 import { NUMERIC_POLICY_SCHEMA, BOOLEAN_POLICY_SCHEMA } from './schemas.js';
 
