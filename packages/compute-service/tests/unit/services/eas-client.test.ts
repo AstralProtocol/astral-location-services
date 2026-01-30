@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { decodeLocationAttestation, isSupportedChain, getSupportedChains } from '../../../src/services/eas-client.js';
+import { decodeLocationAttestation, isSupportedChain, getSupportedChains, clearCaches } from '../../../src/services/eas-client.js';
 import { AbiCoder } from 'ethers';
 
 describe('EAS Client', () => {
@@ -74,6 +74,12 @@ describe('EAS Client', () => {
       expect(chains).toContain(8453);   // Base Mainnet
       expect(chains).toContain(11155111); // Sepolia
       expect(chains).toContain(1);      // Ethereum Mainnet
+    });
+  });
+
+  describe('clearCaches', () => {
+    it('clears provider and contract caches without error', () => {
+      expect(() => clearCaches()).not.toThrow();
     });
   });
 });
