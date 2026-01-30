@@ -221,7 +221,7 @@ describe('Attestation Data Encoding', () => {
       expect(deadline).toBeLessThan(now + 3700); // < 62 minutes
     });
 
-    it('nonce increments across requests', async () => {
+    it('nonce reflects EAS state (unchanged without submissions)', async () => {
       const res1 = await request(app)
         .post('/compute/v0/distance')
         .send(makeRequest({ from: SF_POINT, to: NYC_POINT }));
@@ -233,9 +233,9 @@ describe('Attestation Data Encoding', () => {
       expect(res1.status).toBe(200);
       expect(res2.status).toBe(200);
 
-      // Nonces should be sequential
+      // Nonces are queried from EAS - without actual submissions, they stay the same
       expect(res2.body.delegatedAttestation.nonce).toBe(
-        res1.body.delegatedAttestation.nonce + 1
+        res1.body.delegatedAttestation.nonce
       );
     });
   });

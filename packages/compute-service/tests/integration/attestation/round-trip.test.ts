@@ -230,8 +230,9 @@ describe('Attestation Round-Trip Verification', () => {
       expect(res1.body.inputRefs[0]).toBe(res2.body.inputRefs[0]);
       expect(res1.body.inputRefs[1]).toBe(res2.body.inputRefs[1]);
 
-      // But nonces (and thus signatures) should be different
-      expect(res1.body.attestation.signature).not.toBe(res2.body.attestation.signature);
+      // With same nonce (queried from EAS, unchanged without submissions),
+      // same inputs produce identical deterministic signatures
+      expect(res1.body.attestation.signature).toBe(res2.body.attestation.signature);
     });
 
     it('input refs in response match input refs in decoded attestation', async () => {
