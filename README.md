@@ -75,6 +75,18 @@ See [What You Can Build](./docs/WHAT-YOU-CAN-BUILD.md) for detailed examples.
 
 ---
 
+## Developer templates and examples
+
+The [developer-templates/](./developer-templates/) directory contains copy-paste templates and runnable examples:
+
+- **Templates** – Basic EAS resolver, location-gated NFT, geofenced token, delivery verification escrow (Solidity).
+- **Examples** – Foundry deployment and tests, React/Next.js frontend, Node E2E workflow, React Native pattern.
+- **Tests** – Contract tests (Foundry) and SDK integration test examples (Vitest).
+
+See [developer-templates/README.md](./developer-templates/README.md) for quick start and prerequisites.
+
+---
+
 ## Architecture
 
 ```
