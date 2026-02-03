@@ -27,3 +27,19 @@ Thumbs.db
 *.log
 npm-debug.log*
 .jscpd-output/
+
+
+# Next.js build output
+.next/
+out/
+
+# Dependencies
+node_modules/
+
+# Environment files
+.env
+.env.local
+
+# Foundry build artifacts
+developer-templates/examples/foundry/out/
+developer-templates/examples/foundry/cache/

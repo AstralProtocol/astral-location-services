@@ -4,7 +4,10 @@
   "private": true,
   "description": "Verifiable geospatial computation service for Ethereum",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "developer-templates/examples/frontend",
+    "developer-templates/examples/e2e-workflow",
+    "developer-templates/tests/sdk"
   ],
   "scripts": {
     "build": "npm run build --workspaces",

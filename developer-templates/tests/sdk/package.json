@@ -1,0 +1,16 @@
+{
+  "name": "astral-sdk-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@decentralized-geo/astral-compute": "file:../../../packages/sdk-extensions"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "vitest": "^4.0.0"
+  }
+}
