@@ -13,11 +13,11 @@ const SCHEMA_REGISTRY_ADDRESS = '0x4200000000000000000000000000000000000020';
 const SCHEMAS = {
   numeric: {
     name: 'NumericPolicyAttestation',
-    schema: 'uint256 result, string units, bytes32[] inputRefs, uint64 timestamp, string operation',
+    schema: 'uint256 result, string units, bytes32[] inputRefs, uint256 timestamp, string operation',
   },
   boolean: {
     name: 'BooleanPolicyAttestation',
-    schema: 'bool result, bytes32[] inputRefs, uint64 timestamp, string operation',
+    schema: 'bool result, bytes32[] inputRefs, uint256 timestamp, string operation',
   },
 };
 

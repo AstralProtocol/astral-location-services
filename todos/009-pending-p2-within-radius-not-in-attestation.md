@@ -59,7 +59,7 @@ inputRefs: [pointResolved.ref, targetResolved.ref, radiusRef],
 ### Option B: Create Dedicated Schema for Within
 Create a new schema that includes radius as explicit field:
 ```solidity
-// Schema: "bool result, uint256 radiusMeters, bytes32[] inputRefs, uint64 timestamp, string operation"
+// Schema: "bool result, uint256 radiusMeters, bytes32[] inputRefs, uint256 timestamp, string operation"
 ```
 
 **Pros:** Radius is explicit and readable

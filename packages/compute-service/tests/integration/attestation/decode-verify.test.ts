@@ -20,8 +20,8 @@ import { TEST_ATTESTER } from '../../helpers/signature.js';
 const app = createTestApp();
 
 // ABI for decoding attestation data
-const BOOLEAN_SCHEMA_TYPES = ['bool', 'bytes32[]', 'uint64', 'string'];
-const NUMERIC_SCHEMA_TYPES = ['uint256', 'string', 'bytes32[]', 'uint64', 'string'];
+const BOOLEAN_SCHEMA_TYPES = ['bool', 'bytes32[]', 'uint256', 'string'];
+const NUMERIC_SCHEMA_TYPES = ['uint256', 'string', 'bytes32[]', 'uint256', 'string'];
 
 describe('Attestation Data Encoding', () => {
   describe('numeric attestations (distance)', () => {

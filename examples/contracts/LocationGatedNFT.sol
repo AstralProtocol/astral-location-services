@@ -68,10 +68,10 @@ contract LocationGatedNFT is SchemaResolver {
         }
 
         // Decode the boolean policy attestation
-        // Schema: "bool result, bytes32[] inputRefs, uint64 timestamp, string operation"
+        // Schema: "bool result, bytes32[] inputRefs, uint256 timestamp, string operation"
         (bool result, , , ) = abi.decode(
             attestation.data,
-            (bool, bytes32[], uint64, string)
+            (bool, bytes32[], uint256, string)
         );
 
         // Require the location check to have passed

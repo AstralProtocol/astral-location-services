@@ -226,11 +226,11 @@ type Input =
 #### BooleanPolicyAttestation Schema
 
 ```solidity
-// Schema: "bool result, bytes32[] inputRefs, uint64 timestamp, string operation"
+// Schema: "bool result, bytes32[] inputRefs, uint256 timestamp, string operation"
 struct BooleanPolicyAttestation {
     bool result;              // The boolean result
     bytes32[] inputRefs;      // Input references (see below)
-    uint64 timestamp;         // When computation was performed
+    uint256 timestamp;        // When computation was performed
     string operation;         // "contains", "within", "intersects"
 }
 ```
@@ -238,12 +238,12 @@ struct BooleanPolicyAttestation {
 #### NumericPolicyAttestation Schema
 
 ```solidity
-// Schema: "uint256 result, string units, bytes32[] inputRefs, uint64 timestamp, string operation"
+// Schema: "uint256 result, string units, bytes32[] inputRefs, uint256 timestamp, string operation"
 struct NumericPolicyAttestation {
     uint256 result;           // Scaled integer (centimeters for distance/length, cm² for area)
     string units;             // "meters" or "square_meters" (indicates base unit before scaling)
     bytes32[] inputRefs;      // Input references (see below)
-    uint64 timestamp;         // When computation was performed
+    uint256 timestamp;        // When computation was performed
     string operation;         // "distance", "length", "area"
 }
 ```
@@ -267,12 +267,12 @@ This enables verification that specific inputs were used in the computation. For
 #### GeometryPolicyAttestation Schema (Future)
 
 ```solidity
-// Schema: "bytes geometry, string geometryType, bytes32[] inputRefs, uint64 timestamp, string operation"
+// Schema: "bytes geometry, string geometryType, bytes32[] inputRefs, uint256 timestamp, string operation"
 struct GeometryPolicyAttestation {
     bytes geometry;           // Encoded geometry result
     string geometryType;      // "Point", "Polygon", etc.
     bytes32[] inputRefs;      // Input references (UIDs or hashes)
-    uint64 timestamp;         // When computation was performed
+    uint256 timestamp;        // When computation was performed
     string operation;         // "buffer", "centroid", "union"
 }
 ```
