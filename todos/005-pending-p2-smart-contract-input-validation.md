@@ -65,8 +65,8 @@ function onAttest(
 ) internal override returns (bool) {
     require(attestation.attester == astralSigner, "Not Astral");
 
-    (bool result, bytes32[] memory inputRefs, uint64 timestamp, string memory operation) =
-        abi.decode(attestation.data, (bool, bytes32[], uint64, string));
+    (bool result, bytes32[] memory inputRefs, uint256 timestamp, string memory operation) =
+        abi.decode(attestation.data, (bool, bytes32[], uint256, string));
 
     // Validate timestamp freshness (within last hour)
     require(block.timestamp - timestamp < 3600, "Stale attestation");

@@ -24,7 +24,7 @@ const RPC_URL = process.env.RPC_URL || 'https://sepolia.base.org';
 const EAS_ADDRESS = '0x4200000000000000000000000000000000000021';
 
 // Registered boolean schema on Base Sepolia
-// Schema: "bool result, bytes32[] inputRefs, uint64 timestamp, string operation"
+// Schema: "bool result, bytes32[] inputRefs, uint256 timestamp, string operation"
 const BOOLEAN_SCHEMA_UID = '0x128e991560d62a7b2d7ea16c82aa31345ac917097d550526780b30050674486f';
 
 // EAS ABI (minimal - just what we need)
