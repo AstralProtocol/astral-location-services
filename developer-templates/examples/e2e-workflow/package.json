@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "echo 'No build needed'",
     "run": "tsx run.ts",
     "test": "tsx run.ts"
   },
