@@ -267,20 +267,25 @@ interface SubjectIdentifier {
 
 ### LocationStamp
 
-Evidence from a proof-of-location system that can corroborate a location claim. Stamps are **independent of claims** and do NOT conform to Location Protocol — they are raw evidence artifacts, not location assertions.
+Evidence from a proof-of-location system that can corroborate a location claim. Stamps are **independent of claims** but their location data conforms to Location Protocol — both claims and stamps use LP format for consistency.
 
 ```typescript
 interface LocationStamp {
-  // Plugin identification
-  plugin: string;              // "proofmode" | "witnesschain" | ...
-  pluginVersion: string;       // Plugin version (semver)
+  // Location data (conforms to LP v0.2) — the OBSERVED location
+  lpVersion: string;           // "0.2"
+  locationType: string;        // "geojson-point", "geojson-polygon", etc.
+  location: LocationData;      // Where evidence indicates subject was
+  srs: string;                 // Spatial reference system URI
 
-  // Spatiotemporal footprint of the evidence
-  spatialFootprint: GeoJSON.Geometry;  // Where evidence indicates
+  // Temporal footprint
   temporalFootprint: {
     start: number;             // Unix timestamp (seconds)
     end: number;               // Unix timestamp (seconds)
   };
+
+  // Plugin identification
+  plugin: string;              // "proofmode" | "witnesschain" | ...
+  pluginVersion: string;       // Plugin version (semver)
 
   // Plugin-specific evidence data
   signals: Record<string, unknown>;
@@ -298,8 +303,9 @@ interface Signature {
 ```
 
 **Design notes:**
-- Stamps do NOT conform to Location Protocol — they are evidence, not claims
-- `spatialFootprint` is a GeoJSON geometry (polygon, circle approximation, etc.), not a point
+- Stamps use LP format for location data (observed location), claims use LP format for asserted location
+- Verification compares: does the stamp's observed location support the claim's asserted location?
+- `location` is typically a GeoJSON geometry (polygon, circle approximation, etc.), not a point
 - `signals` contains plugin-specific evidence data — may be sensor readings, network measurements, or document extractions
 - Multiple signatures support multi-party evidence (e.g., challenger attestations, institutional signatures)
 
@@ -724,19 +730,19 @@ List available verification plugins.
 
 ### VerifiedLocationProof
 
-EAS attestation for verified location proofs. Can be onchain or offchain.
+EAS attestation for verified location proofs. Can be onchain or offchain. Schema fields use **snake_case** to conform with Location Protocol v0.2.
 
 ```solidity
-// Schema fields (Solidity uses snake_case by convention)
-bytes32 claimHash              // Hash of the LocationClaim
-bytes32 proofHash              // Hash of the full LocationProof
+// Schema fields (snake_case per LP v0.2)
+bytes32 claim_hash             // Hash of the LocationClaim
+bytes32 proof_hash             // Hash of the full LocationProof
 uint8 confidence               // 0-100 (scaled from 0-1)
-string credibilityUri          // URI to full CredibilityAssessment (IPFS, etc.)
+string credibility_uri         // URI to full CredibilityAssessment (IPFS, etc.)
 ```
 
 **Design notes:**
 - Offchain attestations are valid — no requirement to submit onchain
-- `claimHash` and `proofHash` enable verification without storing full data onchain
+- `claim_hash` and `proof_hash` enable verification without storing full data onchain
 - `confidence` is the headline number for simple checks (NOT a calibrated probability)
 - Full credibility assessment stored offchain, referenced by URI
 
