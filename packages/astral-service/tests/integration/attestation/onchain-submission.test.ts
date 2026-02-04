@@ -17,7 +17,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import request from 'supertest';
 import { ethers, JsonRpcProvider, Wallet, Contract } from 'ethers';
 import { createTestApp } from '../../helpers/test-server.js';
-import { setNonce } from '../../../src/signing/attestation.js';
+import { setNonce } from '../../../src/core/signing/attestation.js';
 import {
   SF_POINT,
   NYC_POINT,

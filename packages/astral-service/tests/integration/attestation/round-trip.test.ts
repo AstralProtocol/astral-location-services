@@ -28,7 +28,7 @@ import {
   NUMERIC_POLICY_SCHEMA,
   BOOLEAN_POLICY_SCHEMA,
   SCALE_FACTORS,
-} from '../../../src/signing/schemas.js';
+} from '../../../src/core/signing/schemas.js';
 
 const app = createTestApp();
 
