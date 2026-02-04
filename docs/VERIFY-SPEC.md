@@ -75,7 +75,7 @@ Raw Signals → Location Stamps → Evidence Bundles → Verified Location Proof
 C = (subject, spatial_region, temporal_range)
 ```
 
-**Location Stamp** — Evidence from a single proof-of-location system (e.g., ProofMode, WitnessChain). Stamps are **independent of claims** — they capture where/when evidence was collected, not what is being claimed.
+**Location Stamp** — Evidence from a single proof-of-location system (e.g., ProofMode, WitnessChain). Stamps are **independent of claims** — they provide evidence supporting a spatiotemporal assertion, which may come from direct observation (GPS, sensors) or indirect/derived sources (documents, records, inferences).
 
 **Verification** — The process of assessing whether stamps support a claim. Outputs a **credibility vector** quantifying confidence across multiple dimensions.
 
@@ -203,7 +203,7 @@ interface LocationClaim {
 
 ### LocationStamp
 
-Evidence from a single proof-of-location system. Stamps are **independent of claims**.
+Evidence from a single proof-of-location system. Stamps are **independent of claims** and may represent direct observations (sensor data, network measurements) or indirect/derived evidence (document extraction, institutional records).
 
 ```typescript
 interface LocationStamp {
@@ -234,8 +234,8 @@ interface Signature {
 
 **Design notes:**
 - `spatialFootprint` is a GeoJSON geometry (polygon, circle approximation, etc.), not a point
-- `signals` contains raw plugin-specific data (GPS readings, network latencies, sensor data)
-- Multiple signatures support multi-party evidence (e.g., challenger attestations)
+- `signals` contains raw plugin-specific data — may be direct observations (GPS readings, network latencies) or derived evidence (extracted document fields, institutional records)
+- Multiple signatures support multi-party evidence (e.g., challenger attestations, notarized documents)
 
 ### UnverifiedLocationProof
 
