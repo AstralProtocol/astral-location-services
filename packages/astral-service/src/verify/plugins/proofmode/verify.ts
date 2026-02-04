@@ -113,8 +113,16 @@ async function checkSignatures(stamp: LocationStamp): Promise<boolean> {
     return false;
   }
 
-  // MVP: Verify signature format is valid hex
-  // Future: Actually verify the signature against the stamp content
+  // SECURITY TODO: Signatures are NOT cryptographically verified in MVP.
+  // This function only checks format (valid hex), not that the signature
+  // actually corresponds to the stamp content. Any valid hex string is accepted.
+  //
+  // Phase 2 should implement actual verification:
+  // - Recover signer address from signature using ecrecover
+  // - Verify recovered address matches sig.signer.value
+  // - Verify the signed message is the canonical stamp content
+  //
+  // See: ethers.verifyMessage() or ethers.recoverAddress()
   for (const sig of stamp.signatures) {
     if (!sig.value || !sig.value.startsWith('0x')) {
       return false;
