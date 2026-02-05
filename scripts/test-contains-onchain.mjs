@@ -5,7 +5,7 @@
  * Astral compute service, then submits the attestation to Base Sepolia.
  *
  * Prerequisites:
- *   1. Compute service running: npm run dev (in packages/compute-service)
+ *   1. Compute service running: npm run dev (in packages/astral-service)
  *   2. .env file with PRIVATE_KEY set to a wallet with Base Sepolia ETH
  *
  * Usage:
@@ -240,7 +240,7 @@ main().catch(err => {
   if (err.message.includes('fetch')) {
     console.error('');
     console.error('Is the compute service running?');
-    console.error('  cd packages/compute-service && npm run dev');
+    console.error('  cd packages/astral-service && npm run dev');
   }
   process.exit(1);
 });

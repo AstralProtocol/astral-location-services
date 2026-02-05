@@ -1,0 +1,54 @@
+services:
+  app:
+    image: ghcr.io/astral-global/astral-location-services:latest
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://astral:${POSTGRES_PASSWORD:-astral}@db:5432/astral
+      - SIGNER_PRIVATE_KEY=${SIGNER_PRIVATE_KEY}
+      - CHAIN_ID=${CHAIN_ID:-84532}
+      - PORT=3000
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  db:
+    image: postgis/postgis:16-3.4
+    environment:
+      POSTGRES_USER: astral
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-astral}
+      POSTGRES_DB: astral
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./packages/astral-service/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U astral -d astral"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      app:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

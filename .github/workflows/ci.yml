@@ -82,7 +82,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./packages/compute-service/Dockerfile
+          file: ./packages/astral-service/Dockerfile
           push: false
           cache-from: type=gha
           cache-to: type=gha,mode=max

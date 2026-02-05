@@ -7,7 +7,7 @@ services:
       POSTGRES_DB: astral
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./packages/compute-service/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./packages/astral-service/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     ports:
       - "5432:5432"
     healthcheck:

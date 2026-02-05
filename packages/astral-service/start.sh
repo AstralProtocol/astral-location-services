@@ -90,5 +90,5 @@ echo "PostGIS version: $(su postgres -c "psql -h localhost -d $POSTGRES_DB -t -c
 # ----------------------------------------------------------------------------
 echo "Starting Node.js application on port $PORT..."
 
-cd /app/packages/compute-service
+cd /app/packages/astral-service
 exec node dist/index.js

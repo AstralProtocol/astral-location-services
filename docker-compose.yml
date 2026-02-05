@@ -2,7 +2,7 @@ services:
   compute:
     build:
       context: .
-      dockerfile: packages/compute-service/Dockerfile.staging
+      dockerfile: packages/astral-service/Dockerfile.staging
     ports:
       - "3000:3000"
     environment:
@@ -23,7 +23,7 @@ services:
       POSTGRES_DB: astral
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./packages/compute-service/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./packages/astral-service/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     ports:
       - "5432:5432"
     healthcheck:

@@ -286,7 +286,7 @@ jobs:
         id: build
         uses: docker/build-push-action@v5
         with:
-          context: ./packages/compute-service
+          context: ./packages/astral-service
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
@@ -459,7 +459,7 @@ gcloud iam service-accounts keys create ~/github-actions-key.json \
 If you prefer staying in the Vercel ecosystem for staging:
 
 ```typescript
-// packages/compute-service/api/index.ts (Vercel serverless)
+// packages/astral-service/api/index.ts (Vercel serverless)
 import { handle } from '../src/vercel-adapter';
 export default handle;
 ```

@@ -1,7 +1,7 @@
 # EigenCloud Production Dockerfile
 # Self-contained with PostGIS for verifiable computation in TEE
 #
-# Build from repo root: docker build -f packages/compute-service/Dockerfile .
+# Build from repo root: docker build -f packages/astral-service/Dockerfile .
 
 # ============================================================================
 # Stage 1: Build TypeScript
@@ -12,16 +12,16 @@ WORKDIR /app
 
 # Copy root workspace files
 COPY package.json package-lock.json ./
-COPY packages/compute-service/package.json ./packages/compute-service/
+COPY packages/astral-service/package.json ./packages/astral-service/
 
 # Install all dependencies
 RUN npm ci
 
 # Copy source and build
-COPY packages/compute-service/tsconfig.json ./packages/compute-service/
-COPY packages/compute-service/src ./packages/compute-service/src
+COPY packages/astral-service/tsconfig.json ./packages/astral-service/
+COPY packages/astral-service/src ./packages/astral-service/src
 
-WORKDIR /app/packages/compute-service
+WORKDIR /app/packages/astral-service
 RUN npm run build
 
 # ============================================================================
@@ -42,19 +42,19 @@ WORKDIR /app
 
 # Copy root workspace files for npm
 COPY package.json package-lock.json ./
-COPY packages/compute-service/package.json ./packages/compute-service/
+COPY packages/astral-service/package.json ./packages/astral-service/
 
 # Install production dependencies only
-RUN npm ci --omit=dev --workspace=@astral/compute-service
+RUN npm ci --omit=dev --workspace=@astral/astral-service
 
 # Copy built application
-COPY --from=builder /app/packages/compute-service/dist ./packages/compute-service/dist
+COPY --from=builder /app/packages/astral-service/dist ./packages/astral-service/dist
 
 # Copy init script for PostGIS
-COPY packages/compute-service/init.sql /docker-entrypoint-initdb.d/
+COPY packages/astral-service/init.sql /docker-entrypoint-initdb.d/
 
 # Copy startup script
-COPY packages/compute-service/start.sh /start.sh
+COPY packages/astral-service/start.sh /start.sh
 RUN chmod +x /start.sh
 
 # Create log directory for PostgreSQL

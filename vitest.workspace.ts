@@ -1,6 +1,6 @@
 import { defineWorkspace } from 'vitest/config';
 
 export default defineWorkspace([
-  'packages/compute-service',
+  'packages/astral-service',
   'packages/sdk-extensions',
 ]);
