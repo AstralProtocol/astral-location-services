@@ -5,6 +5,7 @@ import { Button } from './ui/button';
 import { Progress } from './ui/progress';
 import { SUITE_GROUPS, type SuiteResult, type TestResult, type Assertion } from '../lib/use-tests';
 import { extractAttestationData, submitAttestation, type SubmitResult } from '../lib/onchain-submit';
+import { TestMinimap } from './test-minimap';
 import { ethers } from 'ethers';
 
 interface Props {
@@ -294,6 +295,9 @@ export function TestPanel({
                               {test.error}
                             </div>
                           )}
+
+                          {/* Minimap of test geometries */}
+                          <TestMinimap testName={test.name} />
 
                           {/* Result hero card */}
                           {compute && compute.result !== null && (
