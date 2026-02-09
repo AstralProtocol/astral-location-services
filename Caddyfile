@@ -1,3 +1,17 @@
-{$DOMAIN:localhost} {
-	reverse_proxy app:3000
+# Caddy config for staging VPS (geobeat-ingest)
+# Lives at /etc/caddy/Caddyfile on the VPS — not auto-deployed.
+# After changes, copy to VPS and run: sudo systemctl reload caddy
+
+staging-api.astral.global {
+	# E2E dashboard (static SPA)
+	handle_path /dashboard/* {
+		root * /root/astral-location-services/e2e/dashboard/dist
+		try_files {path} /index.html
+		file_server
+	}
+
+	# API (everything else)
+	handle {
+		reverse_proxy localhost:3001
+	}
 }
