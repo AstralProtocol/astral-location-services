@@ -8,6 +8,9 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      // Ensure bare imports from e2e/tests/ and e2e/lib/ (outside the
+      // dashboard package root) resolve through the dashboard's node_modules
+      'ethers': path.resolve(__dirname, 'node_modules/ethers'),
     },
   },
   optimizeDeps: {
