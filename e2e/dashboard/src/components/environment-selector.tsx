@@ -22,7 +22,6 @@ interface EnvOption {
 }
 
 const ENVIRONMENTS: EnvOption[] = [
-  { value: 'http://localhost:3000', label: 'Local', description: 'localhost:3000' },
   { value: 'https://staging-api.astral.global', label: 'Staging', description: 'staging-api.astral.global' },
   { value: 'https://api.astral.global', label: 'Production', description: 'api.astral.global', warning: 'Limited availability' },
 ];

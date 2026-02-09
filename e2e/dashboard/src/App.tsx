@@ -19,7 +19,7 @@ function shortenAddress(addr: string) {
 }
 
 export default function App() {
-  const [targetUrl, setTargetUrl] = useState('http://localhost:3000');
+  const [targetUrl, setTargetUrl] = useState('https://staging-api.astral.global');
   const [selectedSuites, setSelectedSuites] = useState<Set<string>>(defaultSuites);
   const [apiKey, setApiKey] = useState('');
   const [privateKey, setPrivateKey] = useState('');
