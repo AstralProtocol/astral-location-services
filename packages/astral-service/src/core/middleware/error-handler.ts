@@ -37,6 +37,9 @@ export const Errors = {
 
   rateLimited: () =>
     new ApiError(429, 'https://astral.global/errors/rate-limited', 'Rate Limited', 'Too many requests. Please try again later.'),
+
+  unauthorized: (detail: string) =>
+    new ApiError(401, 'https://astral.global/errors/unauthorized', 'Unauthorized', detail),
 };
 
 /**
