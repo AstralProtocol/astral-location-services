@@ -3,6 +3,10 @@
 # The dashboard dist is auto-deployed to /var/www/astral-dashboard/ by CI.
 
 staging-api.astral.global {
+	# Redirect /dashboard to /dashboard/
+	@dashboardNoSlash path /dashboard
+	redir @dashboardNoSlash /dashboard/ permanent
+
 	# E2E dashboard (static SPA)
 	handle_path /dashboard/* {
 		root * /var/www/astral-dashboard
