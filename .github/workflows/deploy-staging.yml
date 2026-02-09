@@ -77,8 +77,9 @@ jobs:
             # Restart with new image
             docker compose -f docker-compose.staging.yml up -d
 
-            # Build E2E dashboard (static SPA served by Caddy at /dashboard/)
+            # Build E2E dashboard and deploy to Caddy-served directory
             cd e2e/dashboard && npm ci && npm run build && cd ~/astral-location-services
+            cp -r e2e/dashboard/dist/* /var/www/astral-dashboard/
 
             # Wait and verify health
             sleep 10

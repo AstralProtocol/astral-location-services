@@ -1,11 +1,11 @@
 # Caddy config for staging VPS (geobeat-ingest)
-# Lives at /etc/caddy/Caddyfile on the VPS — not auto-deployed.
-# After changes, copy to VPS and run: sudo systemctl reload caddy
+# Not auto-deployed — update /etc/caddy/Caddyfile on the VPS manually.
+# The dashboard dist is auto-deployed to /var/www/astral-dashboard/ by CI.
 
 staging-api.astral.global {
 	# E2E dashboard (static SPA)
 	handle_path /dashboard/* {
-		root * /root/astral-location-services/e2e/dashboard/dist
+		root * /var/www/astral-dashboard
 		try_files {path} /index.html
 		file_server
 	}
