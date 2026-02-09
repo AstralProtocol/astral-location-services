@@ -50,6 +50,31 @@ astral.eas.*        // EAS submission helpers
 
 **Units:** Metric only. No conversion options.
 
+## Working Style
+
+**Autonomy tiers — match the risk to the action:**
+
+- **Just do it**: Type-checks (`tsc --noEmit`), linting, reading files, git status/diff/log, searching code, installing dependencies
+- **Do it but tell me what you did**: Running test suites, build commands, multi-file edits under 5 files
+- **Show me first and wait**: Deployment commands, git push, deleting/moving files, cleanup of code I didn't ask you to touch, scripts that hit external services
+
+**General rules:**
+- For multi-file refactors (5+ files), outline the plan first — but you don't need approval for small targeted edits
+- After editing TypeScript files, run `npx tsc --noEmit` and fix errors before moving on
+- Don't clean up, refactor, or "improve" code adjacent to what I asked you to change
+
+## Testing Rules
+
+- Before writing tests, read existing tests in the repo to match patterns (selectors, assertion style, mocking approach)
+- Verify assertions against actual application behavior — don't guess expected values
+- For E2E tests: show me the completed test before running it
+
+## Infrastructure & Deployment
+
+- Before saying you lack deployment information, check existing deployment scripts (`scripts/`), CI configs, docker-compose files, and environment variable references in the repo
+- Do NOT browse `~/.ssh` or other credential stores — use the deployment scripts which already encode connection details
+- Deployment target: VPS via SSH + EigenCompute TEE
+
 ## When Working on This Repo
 
 1. **Read SPEC.md first** - It's the authoritative technical document
