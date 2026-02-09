@@ -8,6 +8,7 @@ services:
       - DATABASE_URL=postgresql://astral:${POSTGRES_PASSWORD:-astral}@db:5432/astral
       - SIGNER_PRIVATE_KEY=${SIGNER_PRIVATE_KEY}
       - CHAIN_ID=${CHAIN_ID:-84532}
+      - API_KEYS=${API_KEYS}
       - PORT=3000
     depends_on:
       db:
