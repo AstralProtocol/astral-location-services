@@ -1,7 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { EnvironmentSelector } from './components/environment-selector';
 import { TestPanel } from './components/test-panel';
-import { MapView } from './components/map-view';
 import { Button } from './components/ui/button';
 import { Card } from './components/ui/card';
 import { Input } from './components/ui/input';
@@ -184,8 +183,6 @@ export default function App() {
         />
       </Card>
 
-      {/* Map View */}
-      <MapView results={results} selectedTest={null} />
     </div>
   );
 }
