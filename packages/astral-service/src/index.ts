@@ -9,6 +9,7 @@ import verifyRoutes from './verify/routes/index.js';
 import { initPluginRegistry } from './verify/index.js';
 import { errorHandler } from './core/middleware/error-handler.js';
 import { rateLimiter } from './core/middleware/rate-limit.js';
+import { apiKeyAuth, initApiKeys } from './core/middleware/api-key-auth.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -56,17 +57,20 @@ app.get('/', (_req, res) => {
   });
 });
 
-// Compute routes
-app.use('/compute/v0', computeRoutes);
+// Compute routes (with API key auth)
+app.use('/compute/v0', apiKeyAuth, computeRoutes);
 
-// Verify routes
-app.use('/verify/v0', verifyRoutes);
+// Verify routes (with API key auth)
+app.use('/verify/v0', apiKeyAuth, verifyRoutes);
 
 // Error handler (must be last)
 app.use(errorHandler);
 
 // Startup
 async function start() {
+  // Initialize API keys from environment
+  initApiKeys();
+
   // Initialize signer - MNEMONIC (production/TEE) takes precedence over SIGNER_PRIVATE_KEY (local/staging)
   const mnemonic = process.env.MNEMONIC;
   const signerKey = process.env.SIGNER_PRIVATE_KEY;
