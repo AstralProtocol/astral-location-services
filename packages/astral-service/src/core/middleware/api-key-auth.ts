@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'crypto';
 import type { Request, Response, NextFunction } from 'express';
 import { Errors } from './error-handler.js';
 
@@ -56,10 +57,18 @@ export function initApiKeys(): void {
 
 /**
  * Look up an API key and return its configuration.
+ * Uses timing-safe comparison to prevent timing attacks.
  * Returns undefined if key is not found.
  */
 export function getApiKeyConfig(key: string): ApiKeyConfig | undefined {
-  return apiKeys.get(key);
+  const keyBuffer = Buffer.from(key);
+  for (const [storedKey, config] of apiKeys) {
+    const storedBuffer = Buffer.from(storedKey);
+    if (keyBuffer.length === storedBuffer.length && timingSafeEqual(keyBuffer, storedBuffer)) {
+      return config;
+    }
+  }
+  return undefined;
 }
 
 /**
@@ -162,14 +171,6 @@ export function requireApiKey(req: Request, res: Response, next: NextFunction): 
 export interface AuthenticatedRequest extends Request {
   apiKeyTier?: ApiKeyTier;
   apiKeyLabel?: string;
-}
-
-/**
- * Get rate limit for a request based on its tier.
- */
-export function getRateLimitForRequest(req: Request): number {
-  const tier = (req as AuthenticatedRequest).apiKeyTier ?? 'public';
-  return TIER_RATE_LIMITS[tier];
 }
 
 /**

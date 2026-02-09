@@ -40,9 +40,6 @@ export const Errors = {
 
   unauthorized: (detail: string) =>
     new ApiError(401, 'https://astral.global/errors/unauthorized', 'Unauthorized', detail),
-
-  forbidden: (detail: string) =>
-    new ApiError(403, 'https://astral.global/errors/forbidden', 'Forbidden', detail),
 };
 
 /**
