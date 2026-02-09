@@ -21,6 +21,7 @@ function shortenAddress(addr: string) {
 export default function App() {
   const [targetUrl, setTargetUrl] = useState('http://localhost:3000');
   const [selectedSuites, setSelectedSuites] = useState<Set<string>>(defaultSuites);
+  const [apiKey, setApiKey] = useState('');
   const [privateKey, setPrivateKey] = useState('');
   const [rpcUrl, setRpcUrl] = useState('https://sepolia.base.org');
   const [showKeyInput, setShowKeyInput] = useState(false);
@@ -38,8 +39,9 @@ export default function App() {
 
   const handleTargetChange = useCallback((url: string) => {
     setTargetUrl(url);
-    checkHealth(url);
-  }, [checkHealth]);
+    checkHealth(url, apiKey || undefined);
+  }, [checkHealth, apiKey]);
+
 
   const toggleSuite = useCallback((suite: string) => {
     setSelectedSuites(prev => {
@@ -69,15 +71,14 @@ export default function App() {
   }, []);
 
   const buildOnchainOptions = useCallback(async () => {
+    const base: Record<string, unknown> = { rpcUrl, apiKey: apiKey || undefined };
     if (wallet.connected) {
-      const signer = await wallet.getSigner();
-      return { signer, rpcUrl };
+      base.signer = await wallet.getSigner();
+    } else if (privateKey) {
+      base.privateKey = privateKey;
     }
-    if (privateKey) {
-      return { privateKey, rpcUrl };
-    }
-    return { rpcUrl };
-  }, [wallet, privateKey, rpcUrl]);
+    return base;
+  }, [wallet, privateKey, rpcUrl, apiKey]);
 
   const handleRunAll = useCallback(async () => {
     const allSuites = SUITE_GROUPS
@@ -168,6 +169,8 @@ export default function App() {
         onRunSelected={handleRunSelected}
         connected={connected}
         running={running}
+        apiKey={apiKey}
+        onApiKeyChange={setApiKey}
       />
 
       {/* Test Panel — unified suite selection + results */}

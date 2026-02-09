@@ -73,9 +73,9 @@ export function useTests() {
   const [selectedResponse, setSelectedResponse] = useState<Record<string, unknown> | null>(null);
   const abortRef = useRef(false);
 
-  const checkHealth = useCallback(async (baseUrl: string) => {
+  const checkHealth = useCallback(async (baseUrl: string, apiKey?: string) => {
     try {
-      const client = (createClient as any)(baseUrl);
+      const client = (createClient as any)(baseUrl, 84532, { apiKey });
       const res = await client.health();
       setConnected(res.ok);
       return res.ok;
@@ -88,14 +88,14 @@ export function useTests() {
   const runTests = useCallback(async (
     baseUrl: string,
     selectedSuites: string[],
-    onchainOptions?: { privateKey?: string; rpcUrl?: string; signer?: unknown }
+    onchainOptions?: { privateKey?: string; rpcUrl?: string; signer?: unknown; apiKey?: string }
   ) => {
     setRunning(true);
     setResults([]);
     setProgress({ completed: 0, total: 0 });
     abortRef.current = false;
 
-    const client = (createClient as any)(baseUrl);
+    const client = (createClient as any)(baseUrl, 84532, { apiKey: onchainOptions?.apiKey });
     const isOnchain = selectedSuites.some(s => s === 'onchain' || s === 'round-trip');
     const standardSuites = selectedSuites.filter(s => s !== 'onchain' && s !== 'round-trip');
 

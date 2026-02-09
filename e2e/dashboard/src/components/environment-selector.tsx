@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
+import { createClient } from '../../../lib/api-client.mjs';
 
 interface Props {
   targetUrl: string;
@@ -9,24 +10,74 @@ interface Props {
   onRunSelected: () => void;
   connected: boolean | null;
   running: boolean;
+  apiKey: string;
+  onApiKeyChange: (key: string) => void;
 }
 
-const ENVIRONMENTS = [
+interface EnvOption {
+  value: string;
+  label: string;
+  description: string;
+  warning?: string;
+}
+
+const ENVIRONMENTS: EnvOption[] = [
   { value: 'http://localhost:3000', label: 'Local', description: 'localhost:3000' },
   { value: 'https://staging-api.astral.global', label: 'Staging', description: 'staging-api.astral.global' },
+  { value: 'https://api.astral.global', label: 'Production', description: 'api.astral.global', warning: 'Limited availability' },
 ];
 
-export function EnvironmentSelector({ targetUrl, onTargetChange, onRunAll, onRunSelected, connected, running }: Props) {
+type KeyStatus = null | 'checking' | { valid: true; tier: string } | { valid: false };
+
+export function EnvironmentSelector({ targetUrl, onTargetChange, onRunAll, onRunSelected, connected, running, apiKey, onApiKeyChange }: Props) {
   const [customUrl, setCustomUrl] = useState('');
   const [activeEnv, setActiveEnv] = useState<string>(ENVIRONMENTS[0].value);
+  const [keyStatus, setKeyStatus] = useState<KeyStatus>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
   const isCustom = activeEnv === 'custom';
+  const activeOption = ENVIRONMENTS.find(e => e.value === activeEnv);
 
   useEffect(() => {
     if (!isCustom) {
       onTargetChange(activeEnv);
     }
   }, [activeEnv, isCustom, onTargetChange]);
+
+  const validateKey = useCallback(async (key: string, url: string) => {
+    if (!key) {
+      setKeyStatus(null);
+      return;
+    }
+    setKeyStatus('checking');
+    try {
+      const client = (createClient as any)(url);
+      const result = await client.validateKey(key);
+      setKeyStatus(result);
+    } catch {
+      setKeyStatus({ valid: false });
+    }
+  }, []);
+
+  const handleApiKeyChange = useCallback((key: string) => {
+    onApiKeyChange(key);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (!key) {
+      setKeyStatus(null);
+      return;
+    }
+    debounceRef.current = setTimeout(() => validateKey(key, targetUrl), 600);
+  }, [onApiKeyChange, validateKey, targetUrl]);
+
+  // Re-validate when target changes (if key is set)
+  useEffect(() => {
+    if (apiKey) {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => validateKey(apiKey, targetUrl), 600);
+    } else {
+      setKeyStatus(null);
+    }
+  }, [targetUrl, apiKey, validateKey]);
 
   const handleEnvClick = (value: string) => {
     setActiveEnv(value);
@@ -65,7 +116,9 @@ export function EnvironmentSelector({ targetUrl, onTargetChange, onRunAll, onRun
             onClick={() => handleEnvClick(env.value)}
             className={`px-3 py-1.5 rounded-md text-sm transition-colors ${
               activeEnv === env.value
-                ? 'bg-foreground text-background font-medium'
+                ? env.warning
+                  ? 'bg-amber-600 text-white font-medium'
+                  : 'bg-foreground text-background font-medium'
                 : 'text-muted-foreground hover:text-foreground hover:bg-accent'
             }`}
           >
@@ -96,7 +149,7 @@ export function EnvironmentSelector({ targetUrl, onTargetChange, onRunAll, onRun
         </Button>
       </div>
 
-      {/* Target URL display */}
+      {/* Target URL + API key */}
       <div className="flex items-center gap-2">
         {isCustom ? (
           <Input
@@ -110,6 +163,37 @@ export function EnvironmentSelector({ targetUrl, onTargetChange, onRunAll, onRun
         ) : (
           <span className="text-xs font-mono text-muted-foreground px-1">
             {targetUrl}
+          </span>
+        )}
+        <Input
+          type="password"
+          value={apiKey}
+          onChange={e => handleApiKeyChange(e.target.value)}
+          placeholder="API key (optional)"
+          className={`font-mono text-xs h-8 w-[200px] ${
+            keyStatus && keyStatus !== 'checking' && !keyStatus.valid
+              ? 'border-red-300 focus-visible:ring-red-200'
+              : keyStatus && keyStatus !== 'checking' && keyStatus.valid
+              ? 'border-green-300 focus-visible:ring-green-200'
+              : ''
+          }`}
+        />
+        {keyStatus === 'checking' && (
+          <span className="text-[10px] text-muted-foreground">checking...</span>
+        )}
+        {keyStatus && keyStatus !== 'checking' && keyStatus.valid && (
+          <span className="text-[10px] text-green-600 bg-green-50 border border-green-200 rounded px-1.5 py-0.5 whitespace-nowrap">
+            {keyStatus.tier}
+          </span>
+        )}
+        {keyStatus && keyStatus !== 'checking' && !keyStatus.valid && (
+          <span className="text-[10px] text-red-600 bg-red-50 border border-red-200 rounded px-1.5 py-0.5">
+            invalid
+          </span>
+        )}
+        {activeOption?.warning && (
+          <span className="text-[10px] text-amber-600 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 whitespace-nowrap">
+            {activeOption.warning}
           </span>
         )}
       </div>

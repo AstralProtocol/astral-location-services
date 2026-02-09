@@ -62,9 +62,13 @@ async function main() {
   console.log('\x1b[1mAstral E2E Test Runner\x1b[0m');
   console.log(`Target: ${baseUrl}`);
   console.log(`Suite:  ${args.suite}`);
+  if (process.env.API_KEY) {
+    console.log(`API key: ${'*'.repeat(4)}${process.env.API_KEY.slice(-4)}`);
+  }
   console.log('');
 
-  const client = createClient(baseUrl);
+  const apiKey = process.env.API_KEY;
+  const client = createClient(baseUrl, 84532, { apiKey });
 
   // Onchain suite is separate (requires env vars)
   if (args.suite === 'onchain' || args.suite === 'round-trip') {

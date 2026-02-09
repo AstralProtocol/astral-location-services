@@ -51,15 +51,22 @@ async function fetchWithRetry(url, init, retries = MAX_RETRIES) {
  * Create an API client for a given base URL.
  * @param {string} baseUrl - The base URL of the API (e.g. 'http://localhost:3000')
  * @param {number} [chainId=84532] - Chain ID for attestation requests
+ * @param {{ apiKey?: string }} [options] - Optional client options
  */
-export function createClient(baseUrl, chainId = 84532) {
+export function createClient(baseUrl, chainId = 84532, options = {}) {
   const url = baseUrl.replace(/\/$/, '');
   const schemas = DEFAULT_SCHEMAS[chainId] || DEFAULT_SCHEMAS[84532];
+
+  function baseHeaders() {
+    const h = { 'Content-Type': 'application/json' };
+    if (options.apiKey) h['X-API-Key'] = options.apiKey;
+    return h;
+  }
 
   async function request(path, body) {
     const res = await fetchWithRetry(`${url}${path}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: baseHeaders(),
       body: JSON.stringify(body),
     });
     const json = await res.json().catch(() => null);
@@ -67,7 +74,9 @@ export function createClient(baseUrl, chainId = 84532) {
   }
 
   async function get(path) {
-    const res = await fetchWithRetry(`${url}${path}`);
+    const headers = {};
+    if (options.apiKey) headers['X-API-Key'] = options.apiKey;
+    const res = await fetchWithRetry(`${url}${path}`, { headers });
     const json = await res.json().catch(() => null);
     return { status: res.status, ok: res.ok, body: json };
   }
@@ -84,6 +93,30 @@ export function createClient(baseUrl, chainId = 84532) {
   return {
     baseUrl: url,
     chainId,
+
+    /**
+     * Validate an API key against the target server.
+     * Hits an authenticated endpoint and reads the rate-limit tier from response headers.
+     * @param {string} key - The API key to validate
+     * @returns {{ valid: boolean, tier?: string }} - Validation result
+     */
+    async validateKey(key) {
+      try {
+        const headers = {};
+        if (key) headers['X-API-Key'] = key;
+        const res = await fetch(`${url}/verify/v0/plugins`, { headers });
+        if (res.status === 401) return { valid: false };
+
+        const limit = parseInt(res.headers.get('ratelimit-limit'), 10);
+        let tier = 'public';
+        if (limit >= 10000) tier = 'internal';
+        else if (limit >= 1000) tier = 'developer';
+
+        return { valid: true, tier };
+      } catch {
+        return { valid: false };
+      }
+    },
 
     /** GET /health */
     health() {
