@@ -6,7 +6,7 @@
  */
 
 import type { LocationStamp, LocationClaim, StampVerificationResult } from '../../types/index.js';
-import type { ClaimAssessment } from '../interface.js';
+import type { CredibilityVector } from '../interface.js';
 
 /**
  * Verify a ProofMode stamp's internal validity.
@@ -19,11 +19,11 @@ import type { ClaimAssessment } from '../interface.js';
  * Future: Verify device attestation, hardware-backed keys, SafetyNet/DeviceCheck
  */
 export async function verifyProofModeStamp(stamp: LocationStamp): Promise<StampVerificationResult> {
-  const pluginResult: Record<string, unknown> = {};
+  const details: Record<string, unknown> = {};
 
   // Check structure validity
   const structureValid = checkStructure(stamp);
-  pluginResult.structureChecks = {
+  details.structureChecks = {
     hasLocation: !!stamp.location,
     hasTemporalFootprint: !!stamp.temporalFootprint,
     hasSignals: !!stamp.signals,
@@ -31,11 +31,11 @@ export async function verifyProofModeStamp(stamp: LocationStamp): Promise<StampV
 
   // Check signature validity
   const signaturesValid = await checkSignatures(stamp);
-  pluginResult.signatureCount = stamp.signatures.length;
+  details.signatureCount = stamp.signatures.length;
 
   // Check signal consistency
   const signalsConsistent = checkSignalConsistency(stamp);
-  pluginResult.signalChecks = {
+  details.signalChecks = {
     hasRequiredSignals: true, // MVP: Accept any signals
   };
 
@@ -46,12 +46,12 @@ export async function verifyProofModeStamp(stamp: LocationStamp): Promise<StampV
     signaturesValid,
     structureValid,
     signalsConsistent,
-    pluginResult,
+    details,
   };
 }
 
 /**
- * Assess how well a ProofMode stamp supports a location claim.
+ * Evaluate how well a ProofMode stamp supports a location claim.
  *
  * MVP implementation:
  * - Check spatial overlap (stamp location vs claim location)
@@ -59,33 +59,33 @@ export async function verifyProofModeStamp(stamp: LocationStamp): Promise<StampV
  *
  * Future: Use PostGIS for proper spatial analysis
  */
-export async function assessProofModeStamp(
+export async function evaluateProofModeStamp(
   stamp: LocationStamp,
   claim: LocationClaim
-): Promise<ClaimAssessment> {
+): Promise<CredibilityVector> {
   const details: Record<string, unknown> = {};
 
   // Check temporal overlap
-  const temporalOverlap = checkTemporalOverlap(stamp, claim);
-  details.temporalOverlap = temporalOverlap;
+  const temporalResult = checkTemporalOverlap(stamp, claim);
+  details.temporalOverlap = temporalResult;
 
   // Check spatial overlap (MVP: simplified check)
-  const spatialOverlap = checkSpatialOverlap(stamp, claim);
-  details.spatialOverlap = spatialOverlap;
+  const spatialResult = checkSpatialOverlap(stamp, claim);
+  details.spatialOverlap = spatialResult;
 
   // Calculate support score
-  // MVP: Simple weighted average
-  const temporalWeight = 0.4;
-  const spatialWeight = 0.6;
-  const claimSupportScore =
-    temporalOverlap.score * temporalWeight +
-    spatialOverlap.score * spatialWeight;
+  // MVP: Simple weighted average (spatial 60%, temporal 40%)
+  const score =
+    spatialResult.score * 0.6 +
+    temporalResult.score * 0.4;
 
-  const supportsClaim = claimSupportScore > 0.5;
+  const supportsClaim = score > 0.5;
 
   return {
     supportsClaim,
-    claimSupportScore,
+    score,
+    spatial: spatialResult.score,
+    temporal: temporalResult.score,
     details,
   };
 }

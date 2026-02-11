@@ -1,8 +1,11 @@
 /**
  * Plugin Interface for Location Verification
  *
- * All verification plugins implement this interface.
- * The same interface applies across environments; implementations differ.
+ * Service-side plugin interface. Aligned with the canonical
+ * LocationProofPlugin interface in @decentralized-geo/astral-sdk/plugins.
+ *
+ * The service only uses verify() and evaluate(). Client-side methods
+ * (collect, create, sign) are handled by plugin packages directly.
  */
 
 import type {
@@ -12,24 +15,33 @@ import type {
 } from '../types/index.js';
 
 /**
- * Assessment of how well a stamp supports a claim.
+ * Credibility vector — how well a stamp supports a claim.
+ *
+ * Aligned with CredibilityVector from the SDK. The service uses this
+ * as the output of plugin.evaluate().
  */
-export interface ClaimAssessment {
+export interface CredibilityVector {
   /** Does the stamp support the claim? */
   supportsClaim: boolean;
 
-  /** Support score (0-1) */
-  claimSupportScore: number;
+  /** Overall support score (0-1) */
+  score: number;
 
-  /** Plugin-specific assessment details */
+  /** Spatial overlap score (0-1) */
+  spatial: number;
+
+  /** Temporal overlap score (0-1) */
+  temporal: number;
+
+  /** Plugin-specific evaluation details */
   details: Record<string, unknown>;
 }
 
 /**
  * Plugin interface for location verification.
  *
- * Server-side plugins only need to implement verify() and assess().
- * Client-side plugins (future) would also implement collect(), create(), sign().
+ * Server-side plugins implement verify() and evaluate().
+ * This is the service-side subset of the SDK's LocationProofPlugin.
  */
 export interface LocationProofPlugin {
   /** Plugin name (e.g., "proofmode", "witnesschain") */
@@ -58,15 +70,12 @@ export interface LocationProofPlugin {
   verify(stamp: LocationStamp): Promise<StampVerificationResult>;
 
   /**
-   * Assess how well a stamp supports a claim.
+   * Evaluate how well a stamp supports a claim.
    *
    * This is a probabilistic evaluation, not a simple geometric intersection.
-   * The assessment considers:
-   * - Spatial overlap (does stamp footprint cover claim?)
-   * - Temporal overlap (does stamp timeframe cover claim?)
-   * - Signal quality and consistency
+   * Produces a credibility vector — the evidence function E(C, E) → P.
    */
-  assess(stamp: LocationStamp, claim: LocationClaim): Promise<ClaimAssessment>;
+  evaluate(stamp: LocationStamp, claim: LocationClaim): Promise<CredibilityVector>;
 }
 
 /**

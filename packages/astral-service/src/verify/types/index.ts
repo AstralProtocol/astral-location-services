@@ -227,7 +227,8 @@ export interface StampVerificationResult {
   signaturesValid: boolean;
   structureValid: boolean;
   signalsConsistent: boolean;
-  pluginResult: Record<string, unknown>;
+  /** Plugin-specific verification details */
+  details: Record<string, unknown>;
 }
 
 // ============================================

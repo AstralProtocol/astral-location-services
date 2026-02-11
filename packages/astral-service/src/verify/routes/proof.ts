@@ -17,7 +17,7 @@ const router = Router();
  *
  * This endpoint:
  * 1. Verifies each stamp's internal validity
- * 2. Assesses each stamp against the claim
+ * 2. Evaluates each stamp against the claim
  * 3. Analyzes cross-correlation (for multi-stamp proofs)
  * 4. Computes overall credibility
  * 5. Signs an EAS attestation

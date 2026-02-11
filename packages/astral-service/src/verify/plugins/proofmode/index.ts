@@ -4,13 +4,13 @@
  * Device-based location attestation verification.
  * Uses hardware attestation (Secure Enclave/TEE) and sensor fusion.
  *
- * MVP: Validates structure and signatures, assesses against claims.
+ * MVP: Validates structure and signatures, evaluates against claims.
  * Future: Full device attestation verification with SafetyNet/DeviceCheck.
  */
 
 import type { LocationStamp, LocationClaim, StampVerificationResult } from '../../types/index.js';
-import type { LocationProofPlugin, ClaimAssessment } from '../interface.js';
-import { verifyProofModeStamp, assessProofModeStamp } from './verify.js';
+import type { LocationProofPlugin, CredibilityVector } from '../interface.js';
+import { verifyProofModeStamp, evaluateProofModeStamp } from './verify.js';
 
 export class ProofModePlugin implements LocationProofPlugin {
   readonly name = 'proofmode';
@@ -26,9 +26,9 @@ export class ProofModePlugin implements LocationProofPlugin {
   }
 
   /**
-   * Assess how well a ProofMode stamp supports a claim.
+   * Evaluate how well a ProofMode stamp supports a claim.
    */
-  async assess(stamp: LocationStamp, claim: LocationClaim): Promise<ClaimAssessment> {
-    return assessProofModeStamp(stamp, claim);
+  async evaluate(stamp: LocationStamp, claim: LocationClaim): Promise<CredibilityVector> {
+    return evaluateProofModeStamp(stamp, claim);
   }
 }

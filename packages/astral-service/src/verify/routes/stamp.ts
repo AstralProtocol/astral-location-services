@@ -16,7 +16,7 @@ const router = Router();
  * - Structure validity
  * - Signal consistency
  *
- * It does NOT assess the stamp against a claim.
+ * It does NOT evaluate the stamp against a claim.
  * Use POST /verify/v0/proof for full verification with claim assessment.
  */
 router.post('/', async (req, res, next) => {
@@ -37,7 +37,7 @@ router.post('/', async (req, res, next) => {
       signaturesValid: result.signaturesValid,
       structureValid: result.structureValid,
       signalsConsistent: result.signalsConsistent,
-      pluginResult: result.pluginResult,
+      details: result.details,
     };
 
     res.json(response);
