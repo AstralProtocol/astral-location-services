@@ -9,7 +9,19 @@
  * Redundant evidence from the same system doesn't add confidence.
  */
 
-import type { LocationStamp, CorrelationAssessment, StampResult } from './types/index.js';
+import type { LocationStamp, StampResult } from './types/index.js';
+
+/**
+ * @deprecated This module is unused since the CredibilityVector builder
+ * computes independence dimensions directly from stamp results.
+ * Kept for reference — may be removed in a future cleanup.
+ */
+
+interface CorrelationAssessment {
+  independence: number;
+  agreement: number;
+  notes: string[];
+}
 
 /**
  * Analyze correlation between multiple stamps.
@@ -90,9 +102,9 @@ function calculateAgreement(
     return 0.5; // Neutral score
   }
 
-  // Agreement based on claim support consistency
-  const supportScores = validResults.map((r) => r.claimSupportScore);
-  const scoreVariance = calculateVariance(supportScores);
+  // Agreement based on distance consistency (lower variance = higher agreement)
+  const distances = validResults.map((r) => r.distanceMeters).filter(isFinite);
+  const scoreVariance = distances.length > 0 ? calculateVariance(distances) : 0;
 
   // Lower variance = higher agreement (stamps give similar scores)
   // Normalize: variance of 0 -> agreement 1.0, variance of 0.25 -> agreement 0.5
