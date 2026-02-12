@@ -8,14 +8,7 @@
 export { verifyStamp, verifyProof } from './verifier.js';
 
 // Assessment utilities
-export {
-  computeConfidence,
-  buildCredibilityAssessment,
-  scaleConfidenceToUint8,
-} from './assessment.js';
-
-// Correlation analysis
-export { analyzeCorrelation } from './correlation.js';
+export { buildCredibilityVector, toBasisPoints } from './assessment.js';
 
 // Plugin system
 export {
