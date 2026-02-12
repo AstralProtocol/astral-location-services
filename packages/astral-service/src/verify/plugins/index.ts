@@ -71,5 +71,5 @@ export function clearPluginRegistry(): void {
 }
 
 // Re-export interface types
-export type { LocationProofPlugin, PluginMetadata, CredibilityVector } from './interface.js';
+export type { LocationProofPlugin, PluginMetadata, StampEvaluation } from './interface.js';
 export { getPluginMetadata } from './interface.js';

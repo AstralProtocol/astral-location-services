@@ -9,7 +9,7 @@
  */
 
 import type { LocationStamp, LocationClaim, StampVerificationResult } from '../../types/index.js';
-import type { LocationProofPlugin, CredibilityVector } from '../interface.js';
+import type { LocationProofPlugin, StampEvaluation } from '../interface.js';
 import { verifyProofModeStamp, evaluateProofModeStamp } from './verify.js';
 
 export class ProofModePlugin implements LocationProofPlugin {
@@ -28,7 +28,7 @@ export class ProofModePlugin implements LocationProofPlugin {
   /**
    * Evaluate how well a ProofMode stamp supports a claim.
    */
-  async evaluate(stamp: LocationStamp, claim: LocationClaim): Promise<CredibilityVector> {
+  async evaluate(stamp: LocationStamp, claim: LocationClaim): Promise<StampEvaluation> {
     return evaluateProofModeStamp(stamp, claim);
   }
 }

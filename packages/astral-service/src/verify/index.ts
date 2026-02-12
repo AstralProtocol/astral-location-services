@@ -31,5 +31,5 @@ export {
 export type {
   LocationProofPlugin,
   PluginMetadata,
-  CredibilityVector,
+  StampEvaluation,
 } from './plugins/index.js';
