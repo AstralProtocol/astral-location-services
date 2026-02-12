@@ -53,12 +53,21 @@ export function toBasisPoints(fraction: number): number {
 // Dimension Computation
 // ============================================
 
+/** Max value for uint32 — used as sentinel when distance can't be computed */
+const MAX_UINT32 = 4_294_967_295;
+
+/** Clamp distance to uint32 range (Infinity → MAX_UINT32) */
+function clampDistance(meters: number): number {
+  if (!isFinite(meters)) return MAX_UINT32;
+  return Math.round(Math.min(meters, MAX_UINT32));
+}
+
 function computeSpatialDimension(results: StampResult[]) {
   // Filter out stamps with Infinity distance (non-point geometries)
   const finite = results.filter((r) => isFinite(r.distanceMeters));
 
   if (finite.length === 0) {
-    return { meanDistanceMeters: Infinity, maxDistanceMeters: Infinity, withinRadiusFraction: 0 };
+    return { meanDistanceMeters: MAX_UINT32, maxDistanceMeters: MAX_UINT32, withinRadiusFraction: 0 };
   }
 
   const distances = finite.map((r) => r.distanceMeters);
@@ -67,8 +76,8 @@ function computeSpatialDimension(results: StampResult[]) {
   const withinRadiusFraction = results.filter((r) => r.withinRadius).length / results.length;
 
   return {
-    meanDistanceMeters: Math.round(meanDistanceMeters),
-    maxDistanceMeters: Math.round(maxDistanceMeters),
+    meanDistanceMeters: clampDistance(meanDistanceMeters),
+    maxDistanceMeters: clampDistance(maxDistanceMeters),
     withinRadiusFraction,
   };
 }
@@ -108,7 +117,7 @@ function computeIndependenceDimension(results: StampResult[]) {
 function emptyVector(evaluatedAt: number): CredibilityVector {
   return {
     dimensions: {
-      spatial: { meanDistanceMeters: 0, maxDistanceMeters: 0, withinRadiusFraction: 0 },
+      spatial: { meanDistanceMeters: MAX_UINT32, maxDistanceMeters: MAX_UINT32, withinRadiusFraction: 0 },
       temporal: { meanOverlap: 0, minOverlap: 0, fullyOverlappingFraction: 0 },
       validity: { signaturesValidFraction: 0, structureValidFraction: 0, signalsConsistentFraction: 0 },
       independence: { uniquePluginRatio: 0, spatialAgreement: 0, pluginNames: [] },
