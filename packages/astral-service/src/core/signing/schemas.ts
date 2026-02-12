@@ -14,9 +14,10 @@ export const BOOLEAN_POLICY_SCHEMA =
   'bool result, bytes32[] inputRefs, uint256 timestamp, string operation';
 
 // Verify attestation schema (for verified location proofs)
-// Uses snake_case to conform with Location Protocol v0.2
+// Encodes CredibilityVector dimensions directly — no summary score.
+// Fractions are basis points (uint16, 0-10000 = 0.00%-100.00%).
 export const VERIFY_SCHEMA =
-  'bytes32 claim_hash, bytes32 proof_hash, uint8 confidence, string credibility_uri';
+  'bytes32 proofHash, uint32 meanDistanceMeters, uint32 maxDistanceMeters, uint16 withinRadiusBp, uint16 meanOverlapBp, uint16 minOverlapBp, uint16 signaturesValidBp, uint16 structureValidBp, uint16 signalsConsistentBp, uint16 uniquePluginRatioBp, uint8 stampCount';
 
 // Unit strings for numeric attestations
 export const UNITS = {
