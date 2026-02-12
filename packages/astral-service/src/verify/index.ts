@@ -20,6 +20,9 @@ export {
   clearPluginRegistry,
 } from './plugins/index.js';
 
+// Verify types
+export type { CredibilityVector, StampResult } from './types/index.js';
+
 // Plugin types
 export type {
   LocationProofPlugin,
