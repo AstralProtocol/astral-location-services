@@ -1,26 +1,28 @@
 import { Router } from 'express';
 import { keccak256, toUtf8Bytes } from 'ethers';
 import { verifyProof } from '../index.js';
+import { toBasisPoints } from '../assessment.js';
 import { signVerifyAttestation, getSignerAddress } from '../../core/signing/attestation.js';
 import { Errors } from '../../core/middleware/error-handler.js';
 import { VerifyProofRequestSchema } from '../validation/schemas.js';
 import { getVerifySchemaUid } from '../../core/config/schemas.js';
-import type { VerifyProofResponse, VerifyAttestationData } from '../types/index.js';
-import { scaleConfidenceToUint8 } from '../assessment.js';
+import type { VerifiedLocationProofResponse, VerifyAttestationData } from '../types/index.js';
 
 const router = Router();
+
+const ZERO_BYTES32 = '0x0000000000000000000000000000000000000000000000000000000000000000';
 
 /**
  * POST /verify/v0/proof
  *
- * Verify a location proof (claim + stamps) and return a credibility assessment.
+ * Verify a location proof (claim + stamps) and return a VerifiedLocationProof.
  *
  * This endpoint:
  * 1. Verifies each stamp's internal validity
- * 2. Evaluates each stamp against the claim
- * 3. Analyzes cross-correlation (for multi-stamp proofs)
- * 4. Computes overall credibility
- * 5. Signs an EAS attestation
+ * 2. Evaluates each stamp against the claim (raw measurements)
+ * 3. Aggregates into CredibilityVector dimensions
+ * 4. Signs an EAS attestation encoding the dimensions
+ * 5. Returns SDK-compatible VerifiedLocationProof response
  */
 router.post('/', async (req, res, next) => {
   try {
@@ -43,37 +45,53 @@ router.post('/', async (req, res, next) => {
 
     const recipient = options?.recipient ?? '0x0000000000000000000000000000000000000000';
 
-    // Verify the proof
+    // Verify the proof → CredibilityVector
     const credibility = await verifyProof(proof);
 
-    // Generate hashes for attestation
-    const claimHash = keccak256(toUtf8Bytes(JSON.stringify(proof.claim)));
+    const timestamp = Math.floor(Date.now() / 1000);
     const proofHash = keccak256(toUtf8Bytes(JSON.stringify(proof)));
+    const uid = keccak256(toUtf8Bytes(`${proofHash}:${timestamp}`));
 
-    // Create attestation data
+    const { dimensions } = credibility;
+
+    // Encode dimensions as attestation data (basis points for fractions)
     const attestationData: VerifyAttestationData = {
-      claimHash,
       proofHash,
-      confidence: scaleConfidenceToUint8(credibility.confidence),
-      credibilityUri: '', // MVP: Empty, future: IPFS URI
+      meanDistanceMeters: Math.round(dimensions.spatial.meanDistanceMeters),
+      maxDistanceMeters: Math.round(dimensions.spatial.maxDistanceMeters),
+      withinRadiusBp: toBasisPoints(dimensions.spatial.withinRadiusFraction),
+      meanOverlapBp: toBasisPoints(dimensions.temporal.meanOverlap),
+      minOverlapBp: toBasisPoints(dimensions.temporal.minOverlap),
+      signaturesValidBp: toBasisPoints(dimensions.validity.signaturesValidFraction),
+      structureValidBp: toBasisPoints(dimensions.validity.structureValidFraction),
+      signalsConsistentBp: toBasisPoints(dimensions.validity.signalsConsistentFraction),
+      uniquePluginRatioBp: toBasisPoints(dimensions.independence.uniquePluginRatio),
+      stampCount: credibility.meta.stampCount,
     };
 
     // Sign attestation
     const signingResult = await signVerifyAttestation(attestationData, schema, recipient);
 
-    const timestamp = Math.floor(Date.now() / 1000);
-
-    // Generate a unique ID for this verification result
-    const uid = keccak256(toUtf8Bytes(`${proofHash}:${timestamp}`));
-
-    const response: VerifyProofResponse = {
-      uid,
-      credibility,
+    const response: VerifiedLocationProofResponse = {
       proof,
-      attestation: signingResult.attestation,
+      credibility,
+      attestation: {
+        uid,
+        schema,
+        attester: getSignerAddress(),
+        recipient,
+        revocable: true,
+        refUID: ZERO_BYTES32,
+        data: signingResult.attestation.data,
+        time: timestamp,
+        expirationTime: 0,
+        revocationTime: 0,
+        signature: signingResult.attestation.signature,
+      },
       delegatedAttestation: signingResult.delegatedAttestation,
-      attester: getSignerAddress(),
-      timestamp,
+      chainId,
+      evaluationMethod: 'astral-v0.3.0-tee',
+      evaluatedAt: timestamp,
     };
 
     res.json(response);

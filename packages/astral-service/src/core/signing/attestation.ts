@@ -163,6 +163,9 @@ export async function signBooleanAttestation(
 
 /**
  * Sign a verify attestation (for verified location proofs).
+ *
+ * Encodes CredibilityVector dimensions as basis points (uint16)
+ * and raw distance values (uint32). No summary score.
  */
 export async function signVerifyAttestation(
   data: VerifyAttestationData,
@@ -175,10 +178,17 @@ export async function signVerifyAttestation(
 
   const encoder = getEncoder(VERIFY_SCHEMA);
   const encodedData = encoder.encodeData([
-    { name: 'claim_hash', value: data.claimHash, type: 'bytes32' },
-    { name: 'proof_hash', value: data.proofHash, type: 'bytes32' },
-    { name: 'confidence', value: data.confidence, type: 'uint8' },
-    { name: 'credibility_uri', value: data.credibilityUri, type: 'string' },
+    { name: 'proofHash', value: data.proofHash, type: 'bytes32' },
+    { name: 'meanDistanceMeters', value: data.meanDistanceMeters, type: 'uint32' },
+    { name: 'maxDistanceMeters', value: data.maxDistanceMeters, type: 'uint32' },
+    { name: 'withinRadiusBp', value: data.withinRadiusBp, type: 'uint16' },
+    { name: 'meanOverlapBp', value: data.meanOverlapBp, type: 'uint16' },
+    { name: 'minOverlapBp', value: data.minOverlapBp, type: 'uint16' },
+    { name: 'signaturesValidBp', value: data.signaturesValidBp, type: 'uint16' },
+    { name: 'structureValidBp', value: data.structureValidBp, type: 'uint16' },
+    { name: 'signalsConsistentBp', value: data.signalsConsistentBp, type: 'uint16' },
+    { name: 'uniquePluginRatioBp', value: data.uniquePluginRatioBp, type: 'uint16' },
+    { name: 'stampCount', value: data.stampCount, type: 'uint8' },
   ]);
 
   return signDelegatedAttestation(encodedData, schemaUid, recipient);

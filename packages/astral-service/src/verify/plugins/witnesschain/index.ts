@@ -10,7 +10,7 @@
  */
 
 import type { LocationStamp, LocationClaim, StampVerificationResult } from '../../types/index.js';
-import type { LocationProofPlugin, CredibilityVector } from '../interface.js';
+import type { LocationProofPlugin, StampEvaluation } from '../interface.js';
 import {
   verifyWitnessChainStamp,
   evaluateWitnessChainStamp,
@@ -32,7 +32,7 @@ export class WitnessChainPlugin implements LocationProofPlugin {
   /**
    * Evaluate how well a WitnessChain stamp supports a claim.
    */
-  async evaluate(stamp: LocationStamp, claim: LocationClaim): Promise<CredibilityVector> {
+  async evaluate(stamp: LocationStamp, claim: LocationClaim): Promise<StampEvaluation> {
     return evaluateWitnessChainStamp(stamp, claim);
   }
 }

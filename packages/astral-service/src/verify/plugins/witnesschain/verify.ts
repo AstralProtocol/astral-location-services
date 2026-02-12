@@ -8,7 +8,7 @@
 
 import { ethers } from 'ethers';
 import type { LocationStamp, LocationClaim, StampVerificationResult } from '../../types/index.js';
-import type { CredibilityVector } from '../interface.js';
+import type { StampEvaluation } from '../interface.js';
 
 // ============================================
 // Verification
@@ -175,68 +175,64 @@ function temporalOverlap(
 }
 
 /**
- * Evaluate how well a WitnessChain stamp supports a location claim.
+ * Evaluate a WitnessChain stamp against a location claim.
+ *
+ * Returns raw measurements. WitnessChain-specific context (IP geolocation
+ * agreement, KnowLoc status, challenge results) goes in details for
+ * consumers that want plugin-specific intelligence.
  */
 export async function evaluateWitnessChainStamp(
   stamp: LocationStamp,
   claim: LocationClaim
-): Promise<CredibilityVector> {
+): Promise<StampEvaluation> {
   const details: Record<string, unknown> = {};
 
   // Extract stamp coordinates
-  let stampLat: number;
-  let stampLon: number;
   const loc = stamp.location;
-  if (typeof loc === 'object' && 'coordinates' in loc) {
-    const coords = loc.coordinates as number[];
-    stampLon = coords[0];
-    stampLat = coords[1];
-  } else {
+  if (!(typeof loc === 'object' && 'coordinates' in loc)) {
     return {
-      supportsClaim: false,
-      score: 0,
-      spatial: 0,
-      temporal: 0,
+      distanceMeters: Infinity,
+      temporalOverlap: 0,
+      withinRadius: false,
       details: { error: 'Cannot extract coordinates from stamp location' },
     };
   }
+  const stampCoords = loc.coordinates as number[];
 
   // Extract claim coordinates
-  let claimLat: number;
-  let claimLon: number;
   const claimLoc = claim.location;
-  if (typeof claimLoc === 'object' && 'coordinates' in claimLoc) {
-    const coords = claimLoc.coordinates as number[];
-    claimLon = coords[0];
-    claimLat = coords[1];
-  } else {
+  if (!(typeof claimLoc === 'object' && 'coordinates' in claimLoc)) {
     return {
-      supportsClaim: false,
-      score: 0,
-      spatial: 0,
-      temporal: 0,
+      distanceMeters: Infinity,
+      temporalOverlap: 0,
+      withinRadius: false,
       details: { error: 'Cannot extract coordinates from claim location' },
     };
   }
+  const claimCoords = claimLoc.coordinates as number[];
 
-  // Spatial scoring
-  const distance = haversineDistance(stampLat, stampLon, claimLat, claimLon);
-  details.distanceMeters = Math.round(distance);
+  // Haversine distance (raw measurement)
+  const distanceMeters = haversineDistance(
+    stampCoords[1], stampCoords[0],
+    claimCoords[1], claimCoords[0]
+  );
+  details.distanceMeters = Math.round(distanceMeters);
 
+  // WitnessChain uncertainty factor for within-radius check
   const knowLocUncertaintyKm =
     (stamp.signals.knowLocUncertaintyKm as number | undefined) ?? 50;
   const uncertaintyMeters = knowLocUncertaintyKm * 1000;
   const effectiveRadius = claim.radius + uncertaintyMeters;
   details.effectiveRadiusMeters = effectiveRadius;
+  details.knowLocUncertaintyKm = knowLocUncertaintyKm;
 
-  let spatial: number;
-  if (distance <= effectiveRadius) {
-    spatial = 1.0 - distance / effectiveRadius;
-  } else {
-    spatial = Math.max(0, 1.0 - distance / (effectiveRadius * 3));
-  }
+  const withinRadius = distanceMeters <= effectiveRadius;
 
-  // Multi-source verification bonuses
+  // Temporal overlap (raw fraction)
+  const overlap = temporalOverlap(stamp.temporalFootprint, claim.time);
+  details.temporalOverlap = overlap;
+
+  // WitnessChain-specific context in details
   const consolidated = stamp.signals.consolidatedResult as
     | Record<string, unknown>
     | undefined;
@@ -250,38 +246,17 @@ export async function evaluateWitnessChainStamp(
         if (consolidated[key] === true) ipSourcesAgreed++;
       }
     }
-
     if (ipSourcesTotal > 0) {
-      const ipAgreementRatio = ipSourcesAgreed / ipSourcesTotal;
-      spatial = Math.min(1.0, spatial + ipAgreementRatio * 0.1);
       details.ipSourcesAgreed = ipSourcesAgreed;
       details.ipSourcesTotal = ipSourcesTotal;
     }
-
-    if (consolidated.KnowLoc === true) {
-      spatial = Math.min(1.0, spatial + 0.05);
-    }
-
-    if (consolidated.verified === true) {
-      spatial = Math.min(1.0, spatial + 0.05);
-    }
+    details.knowLocVerified = consolidated.KnowLoc === true;
+    details.challengeVerified = consolidated.verified === true;
   }
 
-  // Temporal scoring
-  const temporal = temporalOverlap(stamp.temporalFootprint, claim.time);
-  details.temporalOverlap = temporal;
-
-  // Challenge failure penalty
-  let challengePenalty = 0;
   if (stamp.signals.challengeSucceeded === false) {
-    challengePenalty = 0.3;
-    details.challengeFailedPenalty = challengePenalty;
+    details.challengeFailed = true;
   }
 
-  // Combined score
-  const rawScore = spatial * 0.65 + temporal * 0.35 - challengePenalty;
-  const score = Math.max(0, Math.min(1, rawScore));
-  const supportsClaim = score > 0.3 && spatial > 0.1 && temporal > 0;
-
-  return { supportsClaim, score, spatial, temporal, details };
+  return { distanceMeters, temporalOverlap: overlap, withinRadius, details };
 }

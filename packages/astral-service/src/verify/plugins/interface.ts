@@ -15,23 +15,22 @@ import type {
 } from '../types/index.js';
 
 /**
- * Credibility vector — how well a stamp supports a claim.
+ * Raw measurements from evaluating a stamp against a claim.
  *
- * Aligned with CredibilityVector from the SDK. The service uses this
- * as the output of plugin.evaluate().
+ * Renamed from CredibilityVector to avoid collision with the SDK's
+ * aggregate CredibilityVector type. No opinionated scores — the verifier
+ * passes these measurements through to StampResult, and the assessment
+ * module aggregates them into CredibilityVector dimensions.
  */
-export interface CredibilityVector {
-  /** Does the stamp support the claim? */
-  supportsClaim: boolean;
+export interface StampEvaluation {
+  /** Haversine distance from stamp location to claim location (meters) */
+  distanceMeters: number;
 
-  /** Overall support score (0-1) */
-  score: number;
+  /** Fraction of stamp/claim time windows that overlap (0-1) */
+  temporalOverlap: number;
 
-  /** Spatial overlap score (0-1) */
-  spatial: number;
-
-  /** Temporal overlap score (0-1) */
-  temporal: number;
+  /** Is the stamp within the claim's radius (accounting for stamp accuracy)? */
+  withinRadius: boolean;
 
   /** Plugin-specific evaluation details */
   details: Record<string, unknown>;
@@ -70,12 +69,12 @@ export interface LocationProofPlugin {
   verify(stamp: LocationStamp): Promise<StampVerificationResult>;
 
   /**
-   * Evaluate how well a stamp supports a claim.
+   * Evaluate a stamp against a claim and return raw measurements.
    *
-   * This is a probabilistic evaluation, not a simple geometric intersection.
-   * Produces a credibility vector — the evidence function E(C, E) → P.
+   * Returns distance, temporal overlap, and within-radius — no scores.
+   * The verifier and assessment modules handle aggregation.
    */
-  evaluate(stamp: LocationStamp, claim: LocationClaim): Promise<CredibilityVector>;
+  evaluate(stamp: LocationStamp, claim: LocationClaim): Promise<StampEvaluation>;
 }
 
 /**

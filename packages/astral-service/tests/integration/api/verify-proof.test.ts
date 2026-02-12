@@ -1,5 +1,10 @@
 /**
  * Integration tests for POST /verify/v0/proof endpoint.
+ *
+ * Asserts on the SDK-aligned VerifiedLocationProof response shape:
+ * - credibility: CredibilityVector with dimensions + stampResults + meta
+ * - attestation: full EAS struct (uid, schema, attester, ...)
+ * - evaluationMethod, evaluatedAt, chainId
  */
 import { describe, it, expect } from 'vitest';
 import request from 'supertest';
@@ -26,40 +31,56 @@ describe('POST /verify/v0/proof', () => {
 
       expect(res.status).toBe(200);
 
-      // Check credibility assessment
-      expect(res.body.credibility).toBeDefined();
-      expect(res.body.credibility.confidence).toBeGreaterThan(0);
-      expect(res.body.credibility.confidence).toBeLessThanOrEqual(1);
-      expect(res.body.credibility.stampResults).toHaveLength(1);
+      // Check CredibilityVector structure
+      const { credibility } = res.body;
+      expect(credibility).toBeDefined();
+      expect(credibility.dimensions).toBeDefined();
+      expect(credibility.dimensions.spatial).toBeDefined();
+      expect(credibility.dimensions.temporal).toBeDefined();
+      expect(credibility.dimensions.validity).toBeDefined();
+      expect(credibility.dimensions.independence).toBeDefined();
+      expect(credibility.meta.stampCount).toBe(1);
+      expect(credibility.meta.evaluationMode).toBe('tee');
+      expect(credibility.stampResults).toHaveLength(1);
 
-      // Check stamp result
-      const stampResult = res.body.credibility.stampResults[0];
+      // Check stamp result (raw measurements, no scores)
+      const stampResult = credibility.stampResults[0];
       expect(stampResult.stampIndex).toBe(0);
       expect(stampResult.plugin).toBe('proofmode');
       expect(stampResult.signaturesValid).toBe(true);
       expect(stampResult.structureValid).toBe(true);
-      expect(stampResult.supportsClaim).toBe(true);
+      expect(stampResult.distanceMeters).toBeTypeOf('number');
+      expect(stampResult.temporalOverlap).toBeTypeOf('number');
+      expect(stampResult.withinRadius).toBe(true);
+      expect(stampResult.details).toBeDefined();
 
-      // Single-stamp proofs should not have correlation
-      expect(res.body.credibility.correlation).toBeUndefined();
-
-      // Check response structure
-      expect(res.body.uid).toMatch(/^0x[a-f0-9]{64}$/);
+      // Check VerifiedLocationProof response structure
       expect(res.body.proof).toBeDefined();
-      expect(res.body.attester).toMatch(/^0x[a-fA-F0-9]{40}$/);
-      expect(res.body.timestamp).toBeTypeOf('number');
+      expect(res.body.evaluationMethod).toBe('astral-v0.3.0-tee');
+      expect(res.body.evaluatedAt).toBeTypeOf('number');
+      expect(res.body.chainId).toBeTypeOf('number');
 
-      // Check attestation
-      expect(res.body.attestation).toBeDefined();
-      expect(res.body.attestation.schema).toBe(TEST_SCHEMA_UID);
-      expect(res.body.attestation.signature).toMatch(/^0x[a-fA-F0-9]+$/);
+      // Check attestation (full EAS struct)
+      const { attestation } = res.body;
+      expect(attestation).toBeDefined();
+      expect(attestation.uid).toMatch(/^0x[a-f0-9]{64}$/);
+      expect(attestation.schema).toBe(TEST_SCHEMA_UID);
+      expect(attestation.attester).toMatch(/^0x[a-fA-F0-9]{40}$/);
+      expect(attestation.recipient).toBe(TEST_RECIPIENT);
+      expect(attestation.revocable).toBe(true);
+      expect(attestation.data).toMatch(/^0x/);
+      expect(attestation.time).toBeTypeOf('number');
+      expect(attestation.expirationTime).toBe(0);
+      expect(attestation.revocationTime).toBe(0);
+      expect(attestation.signature).toMatch(/^0x[a-fA-F0-9]+$/);
 
       // Check delegated attestation
       expect(res.body.delegatedAttestation).toBeDefined();
       expect(res.body.delegatedAttestation.deadline).toBeTypeOf('number');
+      expect(res.body.delegatedAttestation.nonce).toBeTypeOf('number');
     });
 
-    it('verifies a multi-stamp proof with correlation analysis', async () => {
+    it('verifies a multi-stamp proof with independence dimensions', async () => {
       const res = await request(app)
         .post('/verify/v0/proof')
         .send(makeVerifyRequest(MULTI_STAMP_PROOF));
@@ -67,12 +88,11 @@ describe('POST /verify/v0/proof', () => {
       expect(res.status).toBe(200);
       expect(res.body.credibility.stampResults).toHaveLength(2);
 
-      // Multi-stamp proofs should have correlation
-      expect(res.body.credibility.correlation).toBeDefined();
-      // Note: Both stamps use proofmode, so independence will be 0.5 (1 unique / 2 total)
-      expect(res.body.credibility.correlation.independence).toBeGreaterThanOrEqual(0);
-      expect(res.body.credibility.correlation.agreement).toBeGreaterThan(0);
-      expect(res.body.credibility.correlation.notes).toBeInstanceOf(Array);
+      // Multi-stamp: independence dimension reflects plugin diversity
+      const { independence } = res.body.credibility.dimensions;
+      expect(independence.uniquePluginRatio).toBeGreaterThanOrEqual(0);
+      expect(independence.pluginNames).toBeInstanceOf(Array);
+      expect(independence.spatialAgreement).toBeGreaterThan(0);
     });
 
     it('handles redundant stamps (same plugin) appropriately', async () => {
@@ -82,9 +102,10 @@ describe('POST /verify/v0/proof', () => {
 
       expect(res.status).toBe(200);
 
-      // Redundant stamps should have low independence
-      expect(res.body.credibility.correlation).toBeDefined();
-      expect(res.body.credibility.correlation.independence).toBeLessThanOrEqual(0.5);
+      // Both stamps from same plugin → low uniquePluginRatio
+      const { independence } = res.body.credibility.dimensions;
+      expect(independence.uniquePluginRatio).toBeLessThanOrEqual(0.5);
+      expect(independence.pluginNames).toEqual(['proofmode']);
     });
   });
 
@@ -101,15 +122,17 @@ describe('POST /verify/v0/proof', () => {
 
       expect(res.status).toBe(200);
 
-      // Stamp should be valid but not support claim
+      // Stamp should be valid but outside radius
       const stampResult = res.body.credibility.stampResults[0];
       expect(stampResult.signaturesValid).toBe(true);
       expect(stampResult.structureValid).toBe(true);
-      expect(stampResult.supportsClaim).toBe(false);
-      expect(stampResult.claimSupportScore).toBeLessThan(0.5);
+      expect(stampResult.withinRadius).toBe(false);
+      expect(stampResult.distanceMeters).toBeGreaterThan(100); // Claim radius is 100m
 
-      // Overall confidence should be lower
-      expect(res.body.credibility.confidence).toBeLessThan(0.5);
+      // Spatial dimension should reflect the distance
+      const { spatial } = res.body.credibility.dimensions;
+      expect(spatial.withinRadiusFraction).toBe(0);
+      expect(spatial.meanDistanceMeters).toBeGreaterThan(100);
     });
 
     it('detects temporal mismatch between stamp and claim', async () => {
@@ -124,9 +147,13 @@ describe('POST /verify/v0/proof', () => {
 
       expect(res.status).toBe(200);
 
-      // Temporal mismatch should reduce support score
+      // Temporal mismatch → low overlap
       const stampResult = res.body.credibility.stampResults[0];
-      expect(stampResult.claimSupportScore).toBeLessThan(1.0);
+      expect(stampResult.temporalOverlap).toBeLessThan(1.0);
+
+      // Temporal dimension should reflect the mismatch
+      const { temporal } = res.body.credibility.dimensions;
+      expect(temporal.meanOverlap).toBeLessThan(1.0);
     });
   });
 
