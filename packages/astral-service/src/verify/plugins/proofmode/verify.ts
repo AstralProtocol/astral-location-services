@@ -99,17 +99,15 @@ async function checkSignatures(stamp: LocationStamp): Promise<boolean> {
   }
 
   // SECURITY TODO: Signatures are NOT cryptographically verified in MVP.
-  // This function only checks format (valid hex), not that the signature
-  // actually corresponds to the stamp content. Any valid hex string is accepted.
+  // This function only checks that required fields are present.
+  // Real ProofMode stamps carry PGP signatures (ASCII-armored),
+  // while wallet-signed stamps carry hex (0x-prefixed).
   //
-  // Phase 2 should implement actual verification:
-  // - Recover signer address from signature using ecrecover
-  // - Verify recovered address matches sig.signer.value
-  // - Verify the signed message is the canonical stamp content
-  //
-  // See: ethers.verifyMessage() or ethers.recoverAddress()
+  // Phase 2 should implement actual verification per algorithm:
+  // - 'secp256k1'/'eip712': ecrecover, ethers.verifyMessage()
+  // - 'pgp': openpgp.js verify against pubkey.asc
   for (const sig of stamp.signatures) {
-    if (!sig.value || !sig.value.startsWith('0x')) {
+    if (!sig.value || sig.value.trim().length === 0) {
       return false;
     }
     if (!sig.signer || !sig.signer.scheme || !sig.signer.value) {

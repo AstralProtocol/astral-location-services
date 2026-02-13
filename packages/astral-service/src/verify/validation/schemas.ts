@@ -34,7 +34,7 @@ export const TimeBoundsSchema = z.object({
 export const SignatureSchema = z.object({
   signer: SubjectIdentifierSchema,
   algorithm: z.string().min(1, 'Algorithm is required'),
-  value: z.string().regex(/^0x[a-fA-F0-9]+$/, 'Signature must be a hex string'),
+  value: z.string().min(1, 'Signature value is required'),
   timestamp: z.number().int().positive('Signature timestamp must be a positive Unix timestamp'),
 });
 
