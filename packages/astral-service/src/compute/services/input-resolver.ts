@@ -1,7 +1,7 @@
 import { keccak256, toUtf8Bytes } from 'ethers';
 import stableStringify from 'fast-json-stable-stringify';
-import type { Input, ResolvedInput, RawGeometryInput, OnchainInput } from '../types/index.js';
-import { isRawGeometry, isOnchainInput, isOffchainInput } from '../types/index.js';
+import type { Input, ResolvedInput, RawGeometryInput, OnchainInput, VerifiedProofInput, ProofInputContext } from '../types/index.js';
+import { isRawGeometry, isOnchainInput, isOffchainInput, isVerifiedProofInput } from '../types/index.js';
 import { getAttestation, decodeLocationAttestation } from './eas-client.js';
 import { Errors } from '../../core/middleware/error-handler.js';
 
@@ -24,6 +24,10 @@ export interface ResolveOptions {
  * @param options - Resolution options (chainId required for UID resolution)
  */
 export async function resolveInput(input: Input, options?: ResolveOptions): Promise<ResolvedInput> {
+  if (isVerifiedProofInput(input)) {
+    return resolveVerifiedProofInput(input);
+  }
+
   if (isRawGeometry(input)) {
     return resolveRawGeometry(input);
   }
@@ -144,6 +148,62 @@ function resolveRawGeometry(geometry: RawGeometryInput): ResolvedInput {
     geometry,
     ref,
   };
+}
+
+/**
+ * Resolve a verified proof input to geometry.
+ * Extracts claim geometry and attaches proof context for response enrichment.
+ */
+function resolveVerifiedProofInput(input: VerifiedProofInput): ResolvedInput {
+  const { verifiedProof } = input;
+  const { location } = verifiedProof.proof.claim;
+
+  if (typeof location === 'string') {
+    throw Errors.invalidInput(
+      `Verified proof claim uses non-GeoJSON location format (got string: "${location.slice(0, 50)}"). ` +
+      'Only GeoJSON geometry locations are supported for compute operations in v0.'
+    );
+  }
+
+  const geometry = location as RawGeometryInput;
+  if (!isRawGeometry(geometry)) {
+    throw Errors.invalidInput(
+      `Invalid geometry type in verified proof claim: expected GeoJSON geometry, got ${(geometry as { type?: string }).type || 'unknown'}`
+    );
+  }
+
+  return {
+    geometry,
+    ref: verifiedProof.attestation.uid,
+    proofContext: {
+      ref: verifiedProof.attestation.uid,
+      credibility: verifiedProof.credibility,
+      claim: verifiedProof.proof.claim,
+      evaluatedAt: verifiedProof.evaluatedAt,
+      evaluationMethod: verifiedProof.evaluationMethod,
+    },
+  };
+}
+
+/**
+ * Extract proof metadata from resolved inputs.
+ * Collects ProofInputContext from any inputs that came from verified proofs.
+ * Returns the first proof's attestation UID as refUID for EAS attestation linking.
+ */
+export function extractProofMetadata(resolvedInputs: ResolvedInput[]): {
+  proofInputs: ProofInputContext[];
+  refUID: string | undefined;
+} {
+  const proofInputs = resolvedInputs
+    .filter((r): r is ResolvedInput & { proofContext: ProofInputContext } => r.proofContext !== undefined)
+    .map(r => r.proofContext);
+
+  // EAS attestations support a single refUID field.
+  // When multiple inputs are verified proofs, we use the first proof's UID.
+  // All proof contexts are still included in the response via proofInputs.
+  const refUID = proofInputs.length > 0 ? proofInputs[0].ref : undefined;
+
+  return { proofInputs, refUID };
 }
 
 /**
