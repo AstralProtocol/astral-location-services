@@ -109,14 +109,14 @@ export interface CredibilityAssessment {
 }
 
 /**
- * Result of stamp verification (no claim assessment).
+ * Result of stamp verification (no claim evaluation).
  */
 export interface StampVerificationResult {
   valid: boolean;
   signaturesValid: boolean;
   structureValid: boolean;
   signalsConsistent: boolean;
-  pluginResult: Record<string, unknown>;
+  details: Record<string, unknown>;
 }
 
 /**

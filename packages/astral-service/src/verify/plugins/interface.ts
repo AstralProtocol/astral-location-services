@@ -1,8 +1,11 @@
 /**
  * Plugin Interface for Location Verification
  *
- * All verification plugins implement this interface.
- * The same interface applies across environments; implementations differ.
+ * Service-side plugin interface. Aligned with the canonical
+ * LocationProofPlugin interface in @decentralized-geo/astral-sdk/plugins.
+ *
+ * The service only uses verify() and evaluate(). Client-side methods
+ * (collect, create, sign) are handled by plugin packages directly.
  */
 
 import type {
@@ -12,24 +15,32 @@ import type {
 } from '../types/index.js';
 
 /**
- * Assessment of how well a stamp supports a claim.
+ * Raw measurements from evaluating a stamp against a claim.
+ *
+ * Renamed from CredibilityVector to avoid collision with the SDK's
+ * aggregate CredibilityVector type. No opinionated scores — the verifier
+ * passes these measurements through to StampResult, and the assessment
+ * module aggregates them into CredibilityVector dimensions.
  */
-export interface ClaimAssessment {
-  /** Does the stamp support the claim? */
-  supportsClaim: boolean;
+export interface StampEvaluation {
+  /** Haversine distance from stamp location to claim location (meters) */
+  distanceMeters: number;
 
-  /** Support score (0-1) */
-  claimSupportScore: number;
+  /** Fraction of stamp/claim time windows that overlap (0-1) */
+  temporalOverlap: number;
 
-  /** Plugin-specific assessment details */
+  /** Is the stamp within the claim's radius (accounting for stamp accuracy)? */
+  withinRadius: boolean;
+
+  /** Plugin-specific evaluation details */
   details: Record<string, unknown>;
 }
 
 /**
  * Plugin interface for location verification.
  *
- * Server-side plugins only need to implement verify() and assess().
- * Client-side plugins (future) would also implement collect(), create(), sign().
+ * Server-side plugins implement verify() and evaluate().
+ * This is the service-side subset of the SDK's LocationProofPlugin.
  */
 export interface LocationProofPlugin {
   /** Plugin name (e.g., "proofmode", "witnesschain") */
@@ -58,15 +69,12 @@ export interface LocationProofPlugin {
   verify(stamp: LocationStamp): Promise<StampVerificationResult>;
 
   /**
-   * Assess how well a stamp supports a claim.
+   * Evaluate a stamp against a claim and return raw measurements.
    *
-   * This is a probabilistic evaluation, not a simple geometric intersection.
-   * The assessment considers:
-   * - Spatial overlap (does stamp footprint cover claim?)
-   * - Temporal overlap (does stamp timeframe cover claim?)
-   * - Signal quality and consistency
+   * Returns distance, temporal overlap, and within-radius — no scores.
+   * The verifier and assessment modules handle aggregation.
    */
-  assess(stamp: LocationStamp, claim: LocationClaim): Promise<ClaimAssessment>;
+  evaluate(stamp: LocationStamp, claim: LocationClaim): Promise<StampEvaluation>;
 }
 
 /**

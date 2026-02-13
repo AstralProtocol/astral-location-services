@@ -75,7 +75,7 @@ Raw Signals → Location Stamps → Location Proofs → Credibility Assessments
 
 **Location Proof** — A stamp (or collection of stamps) bundled with a location claim. This is the verifiable artifact submitted for evaluation.
 
-**Verification (Evidence Evaluation)** — The process of evaluating whether stamps support a claim. This is a **probabilistic assessment**, not a simple geometric intersection. The output is a **credibility assessment** quantifying confidence.
+**Verification (Evidence Evaluation)** — The process of evaluating whether stamps support a claim across multiple dimensions. This produces a **credibility vector** with spatial, temporal, validity, and independence measurements. Applications weight these dimensions according to their own trust models.
 
 ### Uncertainty Model
 
@@ -322,67 +322,123 @@ interface LocationProof {
 
 Single-stamp proofs are valid. Multi-stamp proofs enable cross-correlation analysis.
 
-### CredibilityAssessment
+### CredibilityVector
 
-The output of verification — a structured assessment of how well evidence supports the claim.
+The output of verification — a multidimensional assessment of how well evidence supports the claim.
 
-**Confidence vs Probability:** The `confidence` score is NOT a calibrated probability. It's a heuristic assessment that incorporates:
-- Evidence validity (signatures, structure)
-- Claim support (does evidence footprint cover the claim?)
-- Source independence and agreement
+**Multidimensional Assessment:** The SDK produces a CredibilityVector with four independent dimensions rather than a single confidence score:
 
-A confidence of 0.8 does NOT mean "80% probability the claim is true." It means "the evidence is reasonably strong." Calibrating confidence to true probability is future work.
+1. **Spatial**: How close are stamps to the claimed location? (mean/max distance, within-radius fraction)
+2. **Temporal**: How well do stamps overlap the claimed time window? (mean/min overlap, fully-overlapping fraction)
+3. **Validity**: Did stamps pass cryptographic checks? (signatures/structure/signals fractions)
+4. **Independence**: Are stamps from different sources? (unique plugin ratio, spatial agreement)
 
-See [Towards Stronger Location Proofs](https://raw.githubusercontent.com/AstralProtocol/research/refs/heads/main/docs/towards-harder-location-proofs.md) for formal treatment of evidence evaluation functions.
+Applications define their own trust models to weight these dimensions. There is NO built-in scalar confidence score because:
+- Different applications have different requirements (a check-in app vs. a land registry)
+- Spatial/temporal precision requirements vary by use case
+- Collapsing to a single number creates false precision
+
+See [Towards Stronger Location Proofs](https://raw.githubusercontent.com/AstralProtocol/research/refs/heads/main/docs/towards-harder-location-proofs.md) for the theoretical framework.
 
 ```typescript
-interface CredibilityAssessment {
-  // Overall confidence (0-1) — NOT a calibrated probability
-  confidence: number;
+interface CredibilityVector {
+  /**
+   * Multidimensional proof assessment.
+   *
+   * Each dimension is independently quantifiable. Applications apply their own
+   * weighting schemes to collapse dimensions into trust decisions.
+   */
+  dimensions: {
+    /**
+     * Spatial relevance: How close are stamps to the claimed location?
+     */
+    spatial: {
+      /** Mean haversine distance from stamps to claim center (meters) */
+      meanDistanceMeters: number;
+      /** Maximum distance of any stamp from claim center (meters) */
+      maxDistanceMeters: number;
+      /** Fraction of stamps within claim radius (0-1) */
+      withinRadiusFraction: number;
+    };
 
-  // Per-stamp verification results
+    /**
+     * Temporal relevance: How well do stamp timeframes align with claim?
+     */
+    temporal: {
+      /** Mean overlap between stamp and claim time windows (0-1) */
+      meanOverlap: number;
+      /** Minimum overlap across all stamps (0-1) */
+      minOverlap: number;
+      /** Fraction of stamps with 100% temporal overlap (0-1) */
+      fullyOverlappingFraction: number;
+    };
+
+    /**
+     * Internal validity: Did stamps pass cryptographic and structural checks?
+     */
+    validity: {
+      /** Fraction of stamps with valid signatures (0-1) */
+      signaturesValidFraction: number;
+      /** Fraction of stamps with valid structure (0-1) */
+      structureValidFraction: number;
+      /** Fraction of stamps with consistent internal signals (0-1) */
+      signalsConsistentFraction: number;
+    };
+
+    /**
+     * Independence: Are stamps from diverse, uncorrelated sources?
+     */
+    independence: {
+      /** Ratio of unique plugins to total stamps (0-1) */
+      uniquePluginRatio: number;
+      /** Fraction of stamps agreeing on spatial relevance (0-1) */
+      spatialAgreement: number;
+      /** List of unique plugin names contributing evidence */
+      pluginNames: string[];
+    };
+  };
+
+  /**
+   * Per-stamp detailed results.
+   */
   stampResults: StampResult[];
 
-  // Cross-correlation assessment (for multi-stamp proofs)
-  correlation?: CorrelationAssessment;
-
-  // Extensible dimensions (specific fields TBD)
-  dimensions?: Record<string, number>;
+  /**
+   * Evaluation metadata.
+   */
+  meta: {
+    /** Total number of stamps evaluated */
+    stampCount: number;
+    /** Timestamp of evaluation (Unix seconds) */
+    evaluatedAt: number;
+    /** Where evaluation occurred */
+    evaluationMode: 'local' | 'tee' | 'zk';
+  };
 }
 
 interface StampResult {
   stampIndex: number;
   plugin: string;
 
-  // Stamp-level checks
+  // Stamp-level validity checks (from plugin.verify())
   signaturesValid: boolean;
   structureValid: boolean;
   signalsConsistent: boolean;
 
-  // Assessment against claim
+  // Measurements against claim (from SDK evaluation)
   supportsClaim: boolean;
-  claimSupportScore: number;  // 0-1
+  distanceMeters: number;      // Spatial distance from claim
+  temporalOverlap: number;     // Temporal overlap with claim (0-1)
 
   // Plugin-specific output
   pluginResult: Record<string, unknown>;
-}
-
-interface CorrelationAssessment {
-  // Are stamps from independent systems?
-  independence: number;         // 0-1, higher = more independent
-
-  // Do stamps corroborate each other?
-  agreement: number;            // 0-1, higher = better agreement
-
-  // Notes
-  notes: string[];
 }
 ```
 
 **Design notes:**
 - Per-stamp results enable applications to reason about individual evidence sources
-- Multi-stamp proofs from independent systems increase confidence (but redundant stamps from the same system don't add confidence — they simply don't subtract)
-- The `dimensions` field is extensible for future confidence dimensions
+- Multi-stamp proofs from independent systems provide stronger evidence through cross-validation
+- Applications weight dimensions according to their own trust models
 
 ### VerifiedLocationProof
 
@@ -394,7 +450,7 @@ interface VerifiedLocationProof {
   proof: LocationProof;
 
   // Verification result
-  credibility: CredibilityAssessment;
+  credibility: CredibilityVector;
 
   // Attestation metadata
   uid: string;
@@ -417,39 +473,40 @@ interface LocationProofPlugin {
   // Plugin metadata
   readonly name: string;        // "proofmode" | "witnesschain"
   readonly version: string;     // Semantic version
+  readonly runtimes: Runtime[]; // Where this plugin can operate
+  readonly requiredCapabilities: string[]; // What the plugin needs
+  readonly description: string; // Human-readable description
 
   // === Collection Phase (client-side) ===
 
   /**
    * Collect raw signals from the environment.
    * Implementation varies by device/platform.
+   * Optional - not all plugins collect evidence.
    */
-  collect(options?: CollectOptions): Promise<RawSignals>;
+  collect?(options?: CollectOptions): Promise<RawSignals>;
 
   /**
    * Process raw signals into an unsigned stamp.
    * Determines spatial/temporal footprint from signals.
+   * Optional - verification-only plugins may skip this.
    */
-  create(signals: RawSignals): Promise<UnsignedStamp>;
+  create?(signals: RawSignals): Promise<UnsignedLocationStamp>;
 
   /**
    * Sign the stamp with device/node key.
+   * Optional - some stamps may be pre-signed.
    */
-  sign(stamp: UnsignedStamp, signer: Signer): Promise<LocationStamp>;
+  sign?(stamp: UnsignedLocationStamp, signer: StampSigner): Promise<LocationStamp>;
 
   // === Verification Phase (server-side) ===
 
   /**
    * Verify a stamp's internal validity.
    * Checks signatures, structure, signal consistency.
+   * Optional - not all plugins implement verification.
    */
-  verify(stamp: LocationStamp): Promise<StampVerificationResult>;
-
-  /**
-   * Assess how well a stamp supports a claim.
-   * Probabilistic evaluation, not geometric intersection.
-   */
-  assess(stamp: LocationStamp, claim: LocationClaim): Promise<ClaimAssessment>;
+  verify?(stamp: LocationStamp): Promise<StampVerificationResult>;
 }
 ```
 
@@ -462,10 +519,11 @@ The plugin interface is environment-agnostic. In practice:
 | `collect()` | Hardware attestation via Secure Enclave/Keystore, sensor fusion | UDP ping to challenger network endpoints |
 | `create()` | Fuse attestation data → spatial region | Aggregate latency measurements → spatial region |
 | `sign()` | Device key (hardware-backed) | Node key, challenger signatures |
-| `verify()` | Runs on Astral TEE | Runs on Astral TEE |
-| `assess()` | Runs on Astral TEE | Runs on Astral TEE |
+| `verify()` | Plugin-specific validation logic | Plugin-specific validation logic |
 
-Collection methods may throw "not supported" in environments where they don't apply. Verification always runs server-side (Astral TEE).
+**Note**: Evaluation (assessing how well stamps support claims) is performed by the SDK's `ProofsModule`, not by individual plugins. Plugins only verify internal stamp validity.
+
+Collection methods may throw "not supported" in environments where they don't apply. Verification can run locally or in TEE depending on mode.
 
 ### MVP Plugins
 
@@ -502,10 +560,15 @@ Each plugin must document its own threat model and trust assumptions (see [Secur
    b. Check signatures valid
    c. Check structure valid
    d. Check signals internally consistent
-4. Assess stamp against claim:
-   a. plugin.assess(stamp, claim)
-   b. Probabilistic evaluation of support
-5. Generate CredibilityAssessment
+4. Evaluate stamp against claim (SDK-side):
+   a. Calculate spatial distance (haversine to claim center)
+   b. Calculate temporal overlap (intersection of time windows)
+   c. Determine if stamp supports claim (within radius, overlaps temporally)
+5. Generate CredibilityVector with dimensions:
+   a. Spatial: meanDistanceMeters, maxDistanceMeters, withinRadiusFraction
+   b. Temporal: meanOverlap, minOverlap, fullyOverlappingFraction
+   c. Validity: fractions from step 3
+   d. Independence: trivial for single stamp (uniquePluginRatio = 1.0)
 6. Create VerifiedLocationProof attestation
 7. Return VerifiedLocationProof
 ```
@@ -515,42 +578,95 @@ Each plugin must document its own threat model and trust assumptions (see [Secur
 ```
 1. Receive: LocationProof (claim + multiple stamps)
 2. For each stamp (in parallel):
-   a. Verify stamp internally
-   b. Assess stamp against claim
-   c. Collect StampResult
-3. Cross-correlation analysis:
-   a. Assess independence: Are stamps from different systems?
-   b. Assess agreement: Do spatial/temporal footprints align?
-   c. Note: Redundant stamps (same system) don't add confidence, but don't subtract either
-4. Aggregate into CredibilityAssessment:
-   a. Combine per-stamp results
-   b. Weight by independence and agreement
-   c. Compute overall confidence
+   a. Load plugin for stamp.plugin
+   b. Verify stamp internally via plugin.verify()
+   c. Evaluate stamp against claim (SDK-side):
+      - Calculate spatial distance
+      - Calculate temporal overlap
+      - Determine supportsClaim boolean
+   d. Collect StampResult with measurements
+3. Calculate aggregated dimensions:
+   a. Spatial:
+      - meanDistanceMeters across all stamps
+      - maxDistanceMeters (worst case)
+      - withinRadiusFraction (how many stamps are within claim radius)
+   b. Temporal:
+      - meanOverlap across all stamps
+      - minOverlap (worst case)
+      - fullyOverlappingFraction (how many stamps fully overlap)
+   c. Validity:
+      - signaturesValidFraction (from plugin.verify())
+      - structureValidFraction
+      - signalsConsistentFraction
+   d. Independence:
+      - uniquePluginRatio (unique plugins / total stamps)
+      - spatialAgreement (how closely stamps agree on location)
+      - pluginNames array
+4. Generate CredibilityVector with all dimensions + stampResults + meta
 5. Create VerifiedLocationProof attestation
 6. Return VerifiedLocationProof
 ```
 
-### Confidence Calculation
+### Multidimensional Credibility Model
 
-The confidence calculation follows the evidence evaluation framework from [Towards Stronger Location Proofs](https://raw.githubusercontent.com/AstralProtocol/research/refs/heads/main/docs/towards-harder-location-proofs.md):
+The SDK evaluates proofs across four independent dimensions:
 
+**1. Spatial Relevance**
 ```
-confidence = f(
-  stampValidity[],        // Did each stamp pass internal verification?
-  claimSupportScores[],   // How well does each stamp support the claim?
-  independence,           // Are evidence sources uncorrelated?
-  agreement               // Do sources agree with each other?
-)
+meanDistanceMeters = Σ(haversine(stamp.location, claim.location)) / n
+maxDistanceMeters = max(haversine(stamp.location, claim.location))
+withinRadiusFraction = count(distance ≤ claim.radius) / n
 ```
 
-From the research document, the evidence function $\mathcal{E}$ combines stamps through:
-- **Correlation/Independence**: Distinct vs redundant information sources
-- **Strength/Robustness**: Intrinsic reliability including forgery resistance
-- **Relevance**: How directly evidence pertains to the spatiotemporal claim
+**2. Temporal Relevance**
+```
+overlap(stamp, claim) = intersection(stamp.timeWindow, claim.timeWindow) / min(durations)
+meanOverlap = Σ(overlap) / n
+minOverlap = min(overlap)
+fullyOverlappingFraction = count(overlap == 1.0) / n
+```
 
-Key principle: **Independent, corroborating evidence increases confidence. Redundant evidence from the same system neither adds nor subtracts.**
+**3. Validity** (from plugin.verify())
+```
+signaturesValidFraction = count(signaturesValid) / n
+structureValidFraction = count(structureValid) / n
+signalsConsistentFraction = count(signalsConsistent) / n
+```
 
-Formalizing this function with calibrated weights is future work. See the research document for the mathematical framework.
+**4. Independence**
+```
+uniquePluginRatio = uniquePlugins / totalStamps
+spatialAgreement = 1 - (stddev(distances) / mean(distances))
+pluginNames = [unique plugin names]
+```
+
+**Applications Define Trust Models**
+
+The SDK provides raw measurements. Applications weight dimensions according to their requirements:
+
+```typescript
+// Example: Require all validity checks + reasonable spatial/temporal match
+function myTrustModel(vector: CredibilityVector): boolean {
+  const { dimensions } = vector;
+
+  // All stamps must be valid
+  if (dimensions.validity.signaturesValidFraction < 1.0) return false;
+  if (dimensions.validity.structureValidFraction < 1.0) return false;
+  if (dimensions.validity.signalsConsistentFraction < 1.0) return false;
+
+  // Spatial: mean distance < 100m
+  if (dimensions.spatial.meanDistanceMeters > 100) return false;
+
+  // Temporal: at least 50% overlap
+  if (dimensions.temporal.meanOverlap < 0.5) return false;
+
+  return true;
+}
+```
+
+**No Built-in Weighting**: The SDK does NOT collapse dimensions into a single confidence score. This prevents false precision and lets applications encode their own trust assumptions.
+
+See [Towards Stronger Location Proofs](https://raw.githubusercontent.com/AstralProtocol/research/refs/heads/main/docs/towards-harder-location-proofs.md) for the theoretical framework.
 
 ---
 
@@ -559,17 +675,20 @@ Formalizing this function with calibrated weights is future work. See the resear
 ### Namespace
 
 ```typescript
+// Plugin registration
+astral.plugins.register(plugin)           // Register a proof-of-location plugin
+astral.plugins.get(name)                  // Get plugin by name
+astral.plugins.list()                     // List all registered plugins
+
 // Stamp collection (client SDK)
-astral.stamps.collect(pluginOptions)      // Collect signals
-astral.stamps.create(pluginOptions, signals)  // Create unsigned stamp
-astral.stamps.sign(stamp, signer)         // Sign stamp
+astral.stamps.collect(options)            // Collect signals from plugins
+astral.stamps.create(options, signals)    // Create unsigned stamp
+astral.stamps.sign(options, unsigned, signer)  // Sign stamp
+astral.stamps.verify(stamp)               // Verify stamp internally (no claim)
 
-// Proof construction
+// Proof construction and evaluation
 astral.proofs.create(claim, stamps)       // Bundle claim + stamps
-
-// Verification operations
-astral.verify.stamp(stamp)                // Verify stamp internally (no claim)
-astral.verify.proof(proof)                // Full verification against claim
+astral.proofs.verify(proof, options)      // Full evaluation against claim
 ```
 
 ### Plugin Options
@@ -587,67 +706,109 @@ interface PluginOptions {
 ### Example Usage
 
 ```typescript
-import { astral } from '@decentralized-geo/astral-sdk';
+import { AstralSDK } from '@decentralized-geo/astral-sdk';
+import { MockPlugin } from '@decentralized-geo/plugin-mock';
+import { ethers } from 'ethers';
+
+// === Setup ===
+
+const astral = new AstralSDK({ chainId: 84532 });
+
+// Register plugin
+astral.plugins.register(new MockPlugin({
+  defaultLocation: { lat: 37.7749, lon: -122.4194 },
+  jitterMeters: 50
+}));
 
 // === Client Side: Collect Evidence ===
 
-// Collect signals using ProofMode plugin
-const pluginOptions = {
-  name: 'proofmode',
-  version: '0.1.0',
-  config: { timeout: 5000 }
-};
-
-const signals = await astral.stamps.collect(pluginOptions);
+const signals = await astral.stamps.collect({ plugins: ['mock'] });
 
 // Create and sign stamp
-const unsigned = await astral.stamps.create(pluginOptions, signals);
-const stamp = await astral.stamps.sign(unsigned, deviceSigner);
+const unsigned = await astral.stamps.create({ plugin: 'mock' }, signals[0]);
+
+const wallet = new ethers.Wallet(process.env.PRIVATE_KEY);
+const signer = {
+  algorithm: 'secp256k1',
+  signer: { scheme: 'eth-address', value: wallet.address },
+  sign: async (data: string) => wallet.signMessage(data),
+};
+
+const stamp = await astral.stamps.sign({ plugin: 'mock' }, unsigned, signer);
 
 // === Create Location Proof ===
 
-// Define the claim (extends Location Protocol)
 const claim = {
-  // Location Protocol fields
   lpVersion: '0.2',
   locationType: 'geojson-point',
   location: { type: 'Point', coordinates: [-122.4194, 37.7749] },
   srs: 'http://www.opengis.net/def/crs/OGC/1.3/CRS84',
-  // Verification-specific fields
-  subject: { scheme: 'eth-address', value: '0x...' },
-  radius: 100,  // meters — required
-  time: { start: Date.now() / 1000 - 60, end: Date.now() / 1000 },
-  eventType: 'presence'
+  subject: { scheme: 'eth-address', value: wallet.address },
+  radius: 100,  // meters
+  time: {
+    start: Math.floor(Date.now() / 1000) - 300,
+    end: Math.floor(Date.now() / 1000)
+  },
 };
 
-// Bundle into proof
 const proof = astral.proofs.create(claim, [stamp]);
 
-// === Submit for Verification ===
+// === Verify Proof ===
 
-const result = await astral.verify.proof(proof);
+const assessment = await astral.proofs.verify(proof);
 
-console.log(result.credibility.confidence);  // 0.85
-console.log(result.uid);                     // 0xabc123...
+console.log(assessment.dimensions.spatial);
+// {
+//   meanDistanceMeters: 45.2,
+//   maxDistanceMeters: 45.2,
+//   withinRadiusFraction: 1.0
+// }
+
+console.log(assessment.dimensions.temporal.meanOverlap);  // 1.0
+console.log(assessment.dimensions.validity.signaturesValidFraction);  // 1.0
 ```
 
 ### Multi-Stamp Example
 
 ```typescript
+// Register multiple plugins
+astral.plugins.register(new MockPlugin({ /* config */ }));
+astral.plugins.register(new WitnessChainPlugin({ proverId: '0x...' }));
+
 // Collect from multiple plugins
-const proofmodeStamp = await collectAndSign({ name: 'proofmode', version: '0.1.0' });
-const witnessStamp = await collectAndSign({ name: 'witnesschain', version: '0.1.0' });
+const signals = await astral.stamps.collect({ plugins: ['mock', 'witnesschain'] });
+
+// Create and sign stamps
+const stamps = [];
+for (const s of signals) {
+  const unsigned = await astral.stamps.create({ plugin: s.plugin }, s);
+  const signed = await astral.stamps.sign({ plugin: s.plugin }, unsigned, signer);
+  stamps.push(signed);
+}
 
 // Bundle into proof with multiple stamps
-const proof = astral.proofs.create(claim, [proofmodeStamp, witnessStamp]);
+const proof = astral.proofs.create(claim, stamps);
 
 // Verify multi-stamp proof
-const result = await astral.verify.proof(proof);
+const assessment = await astral.proofs.verify(proof);
 
-// Access cross-correlation analysis
-console.log(result.credibility.correlation.independence);  // 0.95 (different systems)
-console.log(result.credibility.correlation.agreement);     // 0.88 (they agree)
-console.log(result.credibility.confidence);                // Higher than single-stamp
+// Access independence dimension
+console.log(assessment.dimensions.independence);
+// {
+//   uniquePluginRatio: 1.0,         // All stamps from different plugins
+//   spatialAgreement: 0.95,         // Stamps agree on location
+//   pluginNames: ['mock', 'witnesschain']
+// }
+
+// Access spatial dimension
+console.log(assessment.dimensions.spatial);
+// {
+//   meanDistanceMeters: 35.8,       // Average across both stamps
+//   maxDistanceMeters: 52.1,        // Worst case
+//   withinRadiusFraction: 1.0       // Both within radius
+// }
+
+console.log(assessment.meta.stampCount);  // 2
 ```
 
 ---
@@ -693,8 +854,10 @@ Full verification of a location proof against its claim.
 // Response
 {
   uid: string,
-  credibility: CredibilityAssessment,
+  credibility: CredibilityVector,
   proof: LocationProof,
+  attestation: { /* EAS attestation */ },
+  delegatedAttestation: { /* For onchain submission */ },
   attester: string,
   timestamp: number
 }
@@ -736,15 +899,14 @@ EAS attestation for verified location proofs. Can be onchain or offchain. Schema
 // Schema fields (snake_case per LP v0.2)
 bytes32 claim_hash             // Hash of the LocationClaim
 bytes32 proof_hash             // Hash of the full LocationProof
-uint8 confidence               // 0-100 (scaled from 0-1)
-string credibility_uri         // URI to full CredibilityAssessment (IPFS, etc.)
+string credibility_uri         // URI to full CredibilityVector (IPFS, etc.)
 ```
 
 **Design notes:**
 - Offchain attestations are valid — no requirement to submit onchain
 - `claim_hash` and `proof_hash` enable verification without storing full data onchain
-- `confidence` is the headline number for simple checks (NOT a calibrated probability)
-- Full credibility assessment stored offchain, referenced by URI
+- Full credibility vector (multidimensional assessment) stored offchain, referenced by URI
+- No single confidence score - applications define their own trust models from the dimensions
 
 ### Integration with Policy Attestations
 

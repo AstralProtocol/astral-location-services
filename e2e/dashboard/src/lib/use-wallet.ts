@@ -61,6 +61,10 @@ export function useWallet() {
         wrongChain: chainId !== BASE_SEPOLIA_CHAIN_ID,
       });
 
+      // Remove any existing listeners before adding new ones (prevents leaks on reconnect)
+      ethereum.removeAllListeners?.('accountsChanged');
+      ethereum.removeAllListeners?.('chainChanged');
+
       // Listen for account/chain changes
       ethereum.on('accountsChanged', (accs: string[]) => {
         if (accs.length === 0) {

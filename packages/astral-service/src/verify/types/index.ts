@@ -5,7 +5,7 @@
  * These types support evidence-based verification of location claims.
  */
 
-import type { AttestationData, DelegatedAttestationData } from '../../core/types/index.js';
+import type { DelegatedAttestationData } from '../../core/types/index.js';
 
 // ============================================
 // Core Identifiers
@@ -157,62 +157,77 @@ export interface LocationProof {
 }
 
 // ============================================
-// Verification Results
+// Verification Results (aligned with @decentralized-geo/astral-sdk)
 // ============================================
 
 /**
- * Result of verifying a single stamp.
+ * Per-stamp result within a proof evaluation.
+ *
+ * Combines internal verification (is the stamp valid?) with raw relevance
+ * measurements (how close is it to the claim?). No opinionated scoring —
+ * consumers interpret the measurements.
+ *
+ * Matches StampResult in @decentralized-geo/astral-sdk/plugins/types.
  */
 export interface StampResult {
   stampIndex: number;
   plugin: string;
 
-  // Stamp-level checks
+  /** Signature verification passed */
   signaturesValid: boolean;
+  /** Structure conforms to expected format */
   structureValid: boolean;
+  /** Internal signals are self-consistent */
   signalsConsistent: boolean;
 
-  // Assessment against claim
-  supportsClaim: boolean;
-  claimSupportScore: number; // 0-1
+  /** Haversine distance from stamp to claim location (meters) */
+  distanceMeters: number;
+  /** Fraction of stamp/claim time windows that overlap (0-1) */
+  temporalOverlap: number;
+  /** Is the stamp within the claim's radius (accounting for stamp accuracy)? */
+  withinRadius: boolean;
 
-  // Plugin-specific output
-  pluginResult: Record<string, unknown>;
+  /** Additional details (verification + evaluation) */
+  details: Record<string, unknown>;
 }
 
 /**
- * Cross-correlation assessment for multi-stamp proofs.
- */
-export interface CorrelationAssessment {
-  /** Are stamps from independent systems? (0-1, higher = more independent) */
-  independence: number;
-
-  /** Do stamps corroborate each other? (0-1, higher = better agreement) */
-  agreement: number;
-
-  /** Analysis notes */
-  notes: string[];
-}
-
-/**
- * Credibility Assessment - The output of verification.
+ * Multidimensional credibility assessment.
  *
- * Note: The confidence score is NOT a calibrated probability.
- * It's a heuristic assessment incorporating evidence validity,
- * claim support, and source independence/agreement.
+ * Matches CredibilityVector in @decentralized-geo/astral-sdk/plugins/types.
+ * No summary scores — applications apply their own policy logic.
  */
-export interface CredibilityAssessment {
-  /** Overall confidence (0-1) - NOT a calibrated probability */
-  confidence: number;
+export interface CredibilityVector {
+  dimensions: {
+    spatial: {
+      meanDistanceMeters: number;
+      maxDistanceMeters: number;
+      withinRadiusFraction: number;
+    };
+    temporal: {
+      meanOverlap: number;
+      minOverlap: number;
+      fullyOverlappingFraction: number;
+    };
+    validity: {
+      signaturesValidFraction: number;
+      structureValidFraction: number;
+      signalsConsistentFraction: number;
+    };
+    independence: {
+      uniquePluginRatio: number;
+      spatialAgreement: number;
+      pluginNames: string[];
+    };
+  };
 
-  /** Per-stamp verification results */
   stampResults: StampResult[];
 
-  /** Cross-correlation assessment (for multi-stamp proofs) */
-  correlation?: CorrelationAssessment;
-
-  /** Extensible dimensions (specific fields TBD) */
-  dimensions?: Record<string, number>;
+  meta: {
+    stampCount: number;
+    evaluatedAt: number;
+    evaluationMode: 'local' | 'tee' | 'zk';
+  };
 }
 
 // ============================================
@@ -227,7 +242,8 @@ export interface StampVerificationResult {
   signaturesValid: boolean;
   structureValid: boolean;
   signalsConsistent: boolean;
-  pluginResult: Record<string, unknown>;
+  /** Plugin-specific verification details */
+  details: Record<string, unknown>;
 }
 
 // ============================================
@@ -266,24 +282,42 @@ export interface VerifyProofRequest {
 
 /**
  * Response from proof verification.
+ *
+ * Matches VerifiedLocationProof in @decentralized-geo/astral-sdk/plugins/types.
  */
-export interface VerifyProofResponse {
-  /** Unique identifier for this verification result */
-  uid: string;
-
-  /** Credibility assessment */
-  credibility: CredibilityAssessment;
-
-  /** The verified proof */
+export interface VerifiedLocationProofResponse {
+  /** The original proof that was verified (claim + stamps) */
   proof: LocationProof;
 
-  /** Attestation data */
-  attestation: AttestationData;
+  /** Full multidimensional credibility assessment (no summary score) */
+  credibility: CredibilityVector;
+
+  /** EAS attestation signed by the verifier */
+  attestation: {
+    uid: string;
+    schema: string;
+    attester: string;
+    recipient: string;
+    revocable: boolean;
+    refUID: string;
+    data: string;
+    time: number;
+    expirationTime: number;
+    revocationTime: number;
+    signature?: string;
+  };
+
+  /** Delegated attestation for onchain submission via attestByDelegation */
   delegatedAttestation: DelegatedAttestationData;
 
-  /** Service metadata */
-  attester: string;
-  timestamp: number;
+  /** Chain where the attestation was created */
+  chainId?: number;
+
+  /** Identifier for the evaluation method */
+  evaluationMethod: string;
+
+  /** When evaluation was performed (Unix seconds) */
+  evaluatedAt: number;
 }
 
 /**
@@ -309,13 +343,22 @@ export interface PluginsListResponse {
 
 /**
  * Data for verify attestation signing.
- * Maps to the EAS schema fields.
+ * Maps to the new EAS schema with CredibilityVector dimensions.
+ *
+ * Fractions are encoded as basis points (uint16, 0-10000 = 0.00%-100.00%).
  */
 export interface VerifyAttestationData {
-  claimHash: string;        // bytes32 - keccak256(JSON.stringify(claim))
-  proofHash: string;        // bytes32 - keccak256(JSON.stringify(proof))
-  confidence: number;       // uint8 - 0-100 (scaled from 0-1)
-  credibilityUri: string;   // string - URI to full assessment
+  proofHash: string;              // bytes32
+  meanDistanceMeters: number;     // uint32
+  maxDistanceMeters: number;      // uint32
+  withinRadiusBp: number;         // uint16 (basis points)
+  meanOverlapBp: number;          // uint16 (basis points)
+  minOverlapBp: number;           // uint16 (basis points)
+  signaturesValidBp: number;      // uint16 (basis points)
+  structureValidBp: number;       // uint16 (basis points)
+  signalsConsistentBp: number;    // uint16 (basis points)
+  uniquePluginRatioBp: number;    // uint16 (basis points)
+  stampCount: number;             // uint8
 }
 
 // ============================================

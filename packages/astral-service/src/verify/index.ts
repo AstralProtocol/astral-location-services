@@ -8,14 +8,7 @@
 export { verifyStamp, verifyProof } from './verifier.js';
 
 // Assessment utilities
-export {
-  computeConfidence,
-  buildCredibilityAssessment,
-  scaleConfidenceToUint8,
-} from './assessment.js';
-
-// Correlation analysis
-export { analyzeCorrelation } from './correlation.js';
+export { buildCredibilityVector, toBasisPoints } from './assessment.js';
 
 // Plugin system
 export {
@@ -27,9 +20,12 @@ export {
   clearPluginRegistry,
 } from './plugins/index.js';
 
+// Verify types
+export type { CredibilityVector, StampResult } from './types/index.js';
+
 // Plugin types
 export type {
   LocationProofPlugin,
   PluginMetadata,
-  ClaimAssessment,
+  StampEvaluation,
 } from './plugins/index.js';

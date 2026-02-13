@@ -7,6 +7,7 @@
 import type { LocationProofPlugin, PluginMetadata } from './interface.js';
 import { getPluginMetadata } from './interface.js';
 import { ProofModePlugin } from './proofmode/index.js';
+import { WitnessChainPlugin } from './witnesschain/index.js';
 
 // Plugin registry storage
 const plugins = new Map<string, LocationProofPlugin>();
@@ -55,10 +56,8 @@ export function listPlugins(): PluginMetadata[] {
  * Call this at server startup.
  */
 export function initPluginRegistry(): void {
-  // Register built-in plugins
   registerPlugin(new ProofModePlugin());
-
-  // Future: registerPlugin(new WitnessChainPlugin());
+  registerPlugin(new WitnessChainPlugin());
 
   console.log(`Plugin registry initialized with ${plugins.size} plugin(s)`);
 }
@@ -72,5 +71,5 @@ export function clearPluginRegistry(): void {
 }
 
 // Re-export interface types
-export type { LocationProofPlugin, PluginMetadata, ClaimAssessment } from './interface.js';
+export type { LocationProofPlugin, PluginMetadata, StampEvaluation } from './interface.js';
 export { getPluginMetadata } from './interface.js';

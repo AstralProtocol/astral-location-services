@@ -1,6 +1,16 @@
 # Claude Code
 .claude/
 
+# AI tool configs
+.agents/
+.codex/
+.cursor/
+.github/skills/
+.playwright-mcp/
+
+# Dev screenshots
+dashboard-*.png
+
 # Dependencies
 node_modules/
 

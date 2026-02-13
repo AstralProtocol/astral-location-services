@@ -24,7 +24,7 @@ describe('POST /verify/v0/stamp', () => {
       expect(res.body.signaturesValid).toBe(true);
       expect(res.body.structureValid).toBe(true);
       expect(res.body.signalsConsistent).toBe(true);
-      expect(res.body.pluginResult).toBeDefined();
+      expect(res.body.details).toBeDefined();
     });
   });
 

@@ -6,7 +6,7 @@
  */
 
 import type { LocationStamp, LocationClaim, StampVerificationResult } from '../../types/index.js';
-import type { ClaimAssessment } from '../interface.js';
+import type { StampEvaluation } from '../interface.js';
 
 /**
  * Verify a ProofMode stamp's internal validity.
@@ -19,11 +19,11 @@ import type { ClaimAssessment } from '../interface.js';
  * Future: Verify device attestation, hardware-backed keys, SafetyNet/DeviceCheck
  */
 export async function verifyProofModeStamp(stamp: LocationStamp): Promise<StampVerificationResult> {
-  const pluginResult: Record<string, unknown> = {};
+  const details: Record<string, unknown> = {};
 
   // Check structure validity
   const structureValid = checkStructure(stamp);
-  pluginResult.structureChecks = {
+  details.structureChecks = {
     hasLocation: !!stamp.location,
     hasTemporalFootprint: !!stamp.temporalFootprint,
     hasSignals: !!stamp.signals,
@@ -31,11 +31,11 @@ export async function verifyProofModeStamp(stamp: LocationStamp): Promise<StampV
 
   // Check signature validity
   const signaturesValid = await checkSignatures(stamp);
-  pluginResult.signatureCount = stamp.signatures.length;
+  details.signatureCount = stamp.signatures.length;
 
   // Check signal consistency
   const signalsConsistent = checkSignalConsistency(stamp);
-  pluginResult.signalChecks = {
+  details.signalChecks = {
     hasRequiredSignals: true, // MVP: Accept any signals
   };
 
@@ -46,48 +46,33 @@ export async function verifyProofModeStamp(stamp: LocationStamp): Promise<StampV
     signaturesValid,
     structureValid,
     signalsConsistent,
-    pluginResult,
+    details,
   };
 }
 
 /**
- * Assess how well a ProofMode stamp supports a location claim.
+ * Evaluate a ProofMode stamp against a location claim.
  *
- * MVP implementation:
- * - Check spatial overlap (stamp location vs claim location)
- * - Check temporal overlap (stamp footprint vs claim time)
- *
- * Future: Use PostGIS for proper spatial analysis
+ * Returns raw measurements (distance, temporal overlap, within-radius)
+ * instead of opinionated scores. Consumers decide thresholds.
  */
-export async function assessProofModeStamp(
+export async function evaluateProofModeStamp(
   stamp: LocationStamp,
   claim: LocationClaim
-): Promise<ClaimAssessment> {
+): Promise<StampEvaluation> {
   const details: Record<string, unknown> = {};
 
-  // Check temporal overlap
-  const temporalOverlap = checkTemporalOverlap(stamp, claim);
-  details.temporalOverlap = temporalOverlap;
+  // Compute haversine distance (meters)
+  const distanceMeters = computeDistance(stamp, claim, details);
 
-  // Check spatial overlap (MVP: simplified check)
-  const spatialOverlap = checkSpatialOverlap(stamp, claim);
-  details.spatialOverlap = spatialOverlap;
+  // Compute temporal overlap fraction (0-1)
+  const temporalOverlap = computeTemporalOverlap(stamp, claim, details);
 
-  // Calculate support score
-  // MVP: Simple weighted average
-  const temporalWeight = 0.4;
-  const spatialWeight = 0.6;
-  const claimSupportScore =
-    temporalOverlap.score * temporalWeight +
-    spatialOverlap.score * spatialWeight;
+  // Within radius check
+  const withinRadius = distanceMeters <= claim.radius;
+  details.claimRadius = claim.radius;
 
-  const supportsClaim = claimSupportScore > 0.5;
-
-  return {
-    supportsClaim,
-    claimSupportScore,
-    details,
-  };
+  return { distanceMeters, temporalOverlap, withinRadius, details };
 }
 
 // ============================================
@@ -144,41 +129,15 @@ function checkSignalConsistency(stamp: LocationStamp): boolean {
   return stamp.signals !== undefined;
 }
 
-interface OverlapResult {
-  score: number;
-  details: string;
-}
-
-function checkTemporalOverlap(stamp: LocationStamp, claim: LocationClaim): OverlapResult {
-  const stampStart = stamp.temporalFootprint.start;
-  const stampEnd = stamp.temporalFootprint.end;
-  const claimStart = claim.time.start;
-  const claimEnd = claim.time.end;
-
-  // Check if stamp timeframe contains claim timeframe
-  if (stampStart <= claimStart && stampEnd >= claimEnd) {
-    return { score: 1.0, details: 'Stamp fully covers claim timeframe' };
-  }
-
-  // Check for partial overlap
-  const overlapStart = Math.max(stampStart, claimStart);
-  const overlapEnd = Math.min(stampEnd, claimEnd);
-
-  if (overlapStart <= overlapEnd) {
-    const overlapDuration = overlapEnd - overlapStart;
-    const claimDuration = claimEnd - claimStart;
-    const score = claimDuration > 0 ? overlapDuration / claimDuration : 0;
-    return { score, details: `Partial temporal overlap: ${Math.round(score * 100)}%` };
-  }
-
-  return { score: 0, details: 'No temporal overlap' };
-}
-
-function checkSpatialOverlap(stamp: LocationStamp, claim: LocationClaim): OverlapResult {
-  // MVP: Simplified spatial check
-  // Future: Use PostGIS ST_Contains, ST_DWithin for proper analysis
-
-  // If both are GeoJSON points, calculate distance
+/**
+ * Compute haversine distance between stamp and claim locations (meters).
+ * Returns Infinity if coordinates can't be extracted (non-point geometries).
+ */
+function computeDistance(
+  stamp: LocationStamp,
+  claim: LocationClaim,
+  details: Record<string, unknown>
+): number {
   if (
     typeof stamp.location === 'object' &&
     'type' in stamp.location &&
@@ -190,29 +149,54 @@ function checkSpatialOverlap(stamp: LocationStamp, claim: LocationClaim): Overla
     const stampCoords = stamp.location.coordinates as [number, number];
     const claimCoords = claim.location.coordinates as [number, number];
 
-    // Simple haversine distance (meters)
     const distance = haversineDistance(
       claimCoords[1], claimCoords[0],
       stampCoords[1], stampCoords[0]
     );
 
-    // Check if stamp is within claim radius
-    if (distance <= claim.radius) {
-      return { score: 1.0, details: `Stamp within claim radius (${Math.round(distance)}m <= ${claim.radius}m)` };
-    }
-
-    // Partial score based on how close
-    const maxDistance = claim.radius * 3; // Score degrades to 0 at 3x radius
-    if (distance <= maxDistance) {
-      const score = 1 - (distance - claim.radius) / (maxDistance - claim.radius);
-      return { score, details: `Stamp outside radius but close (${Math.round(distance)}m)` };
-    }
-
-    return { score: 0, details: `Stamp too far from claim (${Math.round(distance)}m > ${claim.radius}m)` };
+    details.distanceMeters = Math.round(distance);
+    return distance;
   }
 
-  // For non-point geometries, MVP returns 0.5 (needs PostGIS)
-  return { score: 0.5, details: 'Complex geometry comparison requires PostGIS (MVP fallback)' };
+  // Non-point geometries: can't compute distance in MVP
+  details.distanceNote = 'Complex geometry — distance requires PostGIS';
+  return Infinity;
+}
+
+/**
+ * Compute temporal overlap fraction between stamp and claim time windows.
+ * Returns 0-1 where 1.0 = stamp fully covers claim timeframe.
+ */
+function computeTemporalOverlap(
+  stamp: LocationStamp,
+  claim: LocationClaim,
+  details: Record<string, unknown>
+): number {
+  const stampStart = stamp.temporalFootprint.start;
+  const stampEnd = stamp.temporalFootprint.end;
+  const claimStart = claim.time.start;
+  const claimEnd = claim.time.end;
+
+  // Full coverage
+  if (stampStart <= claimStart && stampEnd >= claimEnd) {
+    details.temporalNote = 'Stamp fully covers claim timeframe';
+    return 1.0;
+  }
+
+  // Partial overlap
+  const overlapStart = Math.max(stampStart, claimStart);
+  const overlapEnd = Math.min(stampEnd, claimEnd);
+
+  if (overlapStart <= overlapEnd) {
+    const overlapDuration = overlapEnd - overlapStart;
+    const claimDuration = claimEnd - claimStart;
+    const overlap = claimDuration > 0 ? overlapDuration / claimDuration : 0;
+    details.temporalNote = `Partial overlap: ${Math.round(overlap * 100)}%`;
+    return overlap;
+  }
+
+  details.temporalNote = 'No temporal overlap';
+  return 0;
 }
 
 /**
