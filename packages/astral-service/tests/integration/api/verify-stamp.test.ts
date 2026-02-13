@@ -6,7 +6,6 @@ import request from 'supertest';
 import { createVerifyTestApp } from '../../helpers/verify-test-server.js';
 import {
   VALID_STAMP,
-  STAMP_INVALID_SIGNATURE,
   makeStampRequest,
 } from '../../fixtures/verify.js';
 
@@ -29,12 +28,17 @@ describe('POST /verify/v0/stamp', () => {
   });
 
   describe('invalid stamps', () => {
-    it('rejects stamp with invalid signature format at validation', async () => {
+    it('rejects stamp with empty signature value at validation', async () => {
+      const stampEmptySig = {
+        ...VALID_STAMP,
+        signatures: [
+          { ...VALID_STAMP.signatures[0], value: '' },
+        ],
+      };
       const res = await request(app)
         .post('/verify/v0/stamp')
-        .send(makeStampRequest(STAMP_INVALID_SIGNATURE));
+        .send(makeStampRequest(stampEmptySig));
 
-      // Validation catches invalid hex format before verification
       expect(res.status).toBe(400);
     });
 

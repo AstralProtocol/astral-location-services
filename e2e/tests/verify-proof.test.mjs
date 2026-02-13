@@ -18,12 +18,13 @@ export function suite(client) {
         name: 'proof-single-stamp',
         fn: async () => {
           const res = await client.verify.proof(VALID_PROOF, { schema: verifySchema });
+          const validity = res.body?.credibility?.dimensions?.validity;
           return [
             assertStatus(res, 200),
             assertTrue(res.body !== null, 'body is not null'),
             {
-              pass: typeof res.body.credibility?.confidence === 'number' && res.body.credibility.confidence > 0,
-              message: `credibility.confidence: ${res.body.credibility?.confidence}`,
+              pass: validity?.structureValidFraction === 1,
+              message: `structureValidFraction: ${validity?.structureValidFraction} (expected 1)`,
               details: res.body,
             },
           ];
@@ -33,12 +34,13 @@ export function suite(client) {
         name: 'proof-multi-stamp',
         fn: async () => {
           const res = await client.verify.proof(MULTI_STAMP_PROOF, { schema: verifySchema });
+          const independence = res.body?.credibility?.dimensions?.independence;
           return [
             assertStatus(res, 200),
             assertTrue(res.body !== null, 'body is not null'),
             {
-              pass: res.body.credibility?.correlation !== undefined,
-              message: `correlation defined: ${JSON.stringify(res.body.credibility?.correlation)}`,
+              pass: independence?.uniquePluginRatio !== undefined,
+              message: `independence.uniquePluginRatio: ${independence?.uniquePluginRatio}`,
               details: res.body,
             },
           ];
@@ -52,6 +54,9 @@ export function suite(client) {
             assertStatus(res, 200),
             assertTrue('credibility' in res.body, 'has credibility'),
             assertTrue('attestation' in res.body, 'has attestation'),
+            assertTrue('delegatedAttestation' in res.body, 'has delegatedAttestation'),
+            assertTrue('evaluationMethod' in res.body, 'has evaluationMethod'),
+            assertTrue('evaluatedAt' in res.body, 'has evaluatedAt'),
           ];
         },
       },
