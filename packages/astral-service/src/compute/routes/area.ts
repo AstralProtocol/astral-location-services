@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { computeArea } from '../db/spatial.js';
-import { resolveInput } from '../services/input-resolver.js';
+import { resolveInput, extractProofMetadata } from '../services/input-resolver.js';
 import { signNumericAttestation } from '../../core/signing/attestation.js';
 import { UNITS, SCALE_FACTORS, scaleToUint256 } from '../../core/signing/schemas.js';
 import { Errors } from '../../core/middleware/error-handler.js';
@@ -34,6 +34,7 @@ router.post('/', async (req, res, next) => {
     }
 
     const resolved = await resolveInput(geometry, { chainId });
+    const { proofInputs, refUID } = extractProofMetadata([resolved]);
 
     // Validate geometry type
     if (!['Polygon', 'MultiPolygon'].includes(resolved.geometry.type)) {
@@ -55,7 +56,8 @@ router.post('/', async (req, res, next) => {
         operation: 'area',
       },
       schema,
-      recipient
+      recipient,
+      refUID
     );
 
     const response: NumericComputeResponse = {
@@ -66,6 +68,7 @@ router.post('/', async (req, res, next) => {
       inputRefs: [resolved.ref],
       attestation: signingResult.attestation,
       delegatedAttestation: signingResult.delegatedAttestation,
+      ...(proofInputs.length > 0 ? { proofInputs } : {}),
     };
 
     res.json(response);

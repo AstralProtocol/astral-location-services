@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { computeDistance } from '../db/spatial.js';
-import { resolveInputs } from '../services/input-resolver.js';
+import { resolveInputs, extractProofMetadata } from '../services/input-resolver.js';
 import { signNumericAttestation } from '../../core/signing/attestation.js';
 import { UNITS, SCALE_FACTORS, scaleToUint256 } from '../../core/signing/schemas.js';
 import { Errors } from '../../core/middleware/error-handler.js';
@@ -36,6 +36,7 @@ router.post('/', async (req, res, next) => {
 
     // Resolve inputs to geometries
     const [fromResolved, toResolved] = await resolveInputs([from, to], { chainId });
+    const { proofInputs, refUID } = extractProofMetadata([fromResolved, toResolved]);
 
     // Compute distance via PostGIS
     const distanceMeters = await computeDistance(fromResolved.geometry, toResolved.geometry);
@@ -54,7 +55,8 @@ router.post('/', async (req, res, next) => {
         operation: 'distance',
       },
       schema,
-      recipient
+      recipient,
+      refUID
     );
 
     const response: NumericComputeResponse = {
@@ -65,6 +67,7 @@ router.post('/', async (req, res, next) => {
       inputRefs: [fromResolved.ref, toResolved.ref],
       attestation: signingResult.attestation,
       delegatedAttestation: signingResult.delegatedAttestation,
+      ...(proofInputs.length > 0 ? { proofInputs } : {}),
     };
 
     res.json(response);

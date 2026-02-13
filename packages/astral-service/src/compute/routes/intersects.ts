@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { computeIntersects } from '../db/spatial.js';
-import { resolveInputs } from '../services/input-resolver.js';
+import { resolveInputs, extractProofMetadata } from '../services/input-resolver.js';
 import { signBooleanAttestation } from '../../core/signing/attestation.js';
 import { Errors } from '../../core/middleware/error-handler.js';
 import { IntersectsRequestSchema } from '../validation/schemas.js';
@@ -33,6 +33,7 @@ router.post('/', async (req, res, next) => {
     }
 
     const [geom1Resolved, geom2Resolved] = await resolveInputs([geometry1, geometry2], { chainId });
+    const { proofInputs, refUID } = extractProofMetadata([geom1Resolved, geom2Resolved]);
 
     const result = await computeIntersects(geom1Resolved.geometry, geom2Resolved.geometry);
     const timestamp = Math.floor(Date.now() / 1000);
@@ -45,7 +46,8 @@ router.post('/', async (req, res, next) => {
         operation: 'intersects',
       },
       schema,
-      recipient
+      recipient,
+      refUID
     );
 
     const response: BooleanComputeResponse = {
@@ -55,6 +57,7 @@ router.post('/', async (req, res, next) => {
       inputRefs: [geom1Resolved.ref, geom2Resolved.ref],
       attestation: signingResult.attestation,
       delegatedAttestation: signingResult.delegatedAttestation,
+      ...(proofInputs.length > 0 ? { proofInputs } : {}),
     };
 
     res.json(response);
