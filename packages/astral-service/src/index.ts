@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import { checkConnection } from './compute/db/pool.js';
-import { initSigner, initSignerFromMnemonic, getSignerAddress, syncNonceFromEAS } from './core/signing/attestation.js';
+import { initSigner, initSignerFromMnemonic, getSignerAddress } from './core/signing/attestation.js';
 import { initSchemaConfig } from './core/config/schemas.js';
 import computeRoutes from './compute/routes/index.js';
 import verifyRoutes from './verify/routes/index.js';
@@ -81,13 +81,11 @@ async function start() {
     initSignerFromMnemonic(mnemonic, chainId);
     console.log('Mode: Production (TEE)');
     console.log('Signer address:', getSignerAddress());
-    await syncNonceFromEAS();
   } else if (signerKey) {
     // Local/Staging mode: Direct private key
     initSigner(signerKey, chainId);
     console.log('Mode: Development/Staging');
     console.log('Signer address:', getSignerAddress());
-    await syncNonceFromEAS();
   } else {
     console.warn('WARNING: Neither MNEMONIC nor SIGNER_PRIVATE_KEY set. Attestation signing will fail.');
   }
