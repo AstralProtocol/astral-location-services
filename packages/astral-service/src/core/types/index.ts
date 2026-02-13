@@ -15,6 +15,8 @@ export interface AttestationData {
   recipient: string;   // Address to receive the attestation
   data: string;        // ABI-encoded attestation data
   signature: string;   // Compact signature (r + s + v)
+  revocable: boolean;  // Whether the attestation can be revoked
+  refUID: string;      // Referenced attestation UID (zero if none)
 }
 
 /**
