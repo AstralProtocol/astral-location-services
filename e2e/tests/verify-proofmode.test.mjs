@@ -254,7 +254,44 @@ export function suite(client) {
         },
       },
 
-      // ── Step 8: NEGATIVE — Antipodal stamp ──────────────────────
+      // ── Step 8: COMPUTE — Feed verified proof into distance ─────
+      {
+        name: 'proofmode-compute-distance',
+        fn: async () => {
+          if (!verifyProofRes?.body) return [skip('proof verification did not complete')];
+
+          const verifiedProof = verifyProofRes.body;
+          const [lon, lat] = stamp.location.coordinates;
+          const claimPoint = { type: 'Point', coordinates: [lon, lat] };
+
+          const res = await client.compute.distance(
+            { verifiedProof },
+            claimPoint,
+          );
+
+          return [
+            assertStatus(res, 200),
+            {
+              pass: typeof res.body?.result === 'number' && res.body.result < 1,
+              message: `distance ${res.body?.result}m (expected ~0, same location)`,
+            },
+            assertTrue(
+              Array.isArray(res.body?.proofInputs) && res.body.proofInputs.length === 1,
+              'proofInputs has 1 entry',
+            ),
+            assertTrue(
+              res.body?.proofInputs?.[0]?.credibility !== undefined,
+              'proofInputs carries credibility',
+            ),
+            {
+              pass: res.body?.proofInputs?.[0]?.ref === verifiedProof.attestation.uid,
+              message: 'inputRef matches verify attestation UID',
+            },
+          ];
+        },
+      },
+
+      // ── Step 9: NEGATIVE — Antipodal stamp ──────────────────────
       {
         name: 'proofmode-antipodal-claim',
         fn: async () => {

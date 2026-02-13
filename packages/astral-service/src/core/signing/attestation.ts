@@ -120,7 +120,8 @@ export function getSignerAddress(): string {
 export async function signNumericAttestation(
   data: NumericPolicyAttestationData,
   schemaUid: string,
-  recipient: string
+  recipient: string,
+  refUID?: string
 ): Promise<SigningResult> {
   if (!signer) {
     throw new Error('Signer not initialized');
@@ -135,7 +136,7 @@ export async function signNumericAttestation(
     { name: 'operation', value: data.operation, type: 'string' },
   ]);
 
-  return signDelegatedAttestation(encodedData, schemaUid, recipient);
+  return signDelegatedAttestation(encodedData, schemaUid, recipient, refUID);
 }
 
 /**
@@ -144,7 +145,8 @@ export async function signNumericAttestation(
 export async function signBooleanAttestation(
   data: BooleanPolicyAttestationData,
   schemaUid: string,
-  recipient: string
+  recipient: string,
+  refUID?: string
 ): Promise<SigningResult> {
   if (!signer) {
     throw new Error('Signer not initialized');
@@ -158,7 +160,7 @@ export async function signBooleanAttestation(
     { name: 'operation', value: data.operation, type: 'string' },
   ]);
 
-  return signDelegatedAttestation(encodedData, schemaUid, recipient);
+  return signDelegatedAttestation(encodedData, schemaUid, recipient, refUID);
 }
 
 /**
@@ -198,10 +200,13 @@ export async function signVerifyAttestation(
  * Create and sign a delegated attestation.
  * Returns split attestation and delegatedAttestation objects.
  */
+const ZERO_BYTES32 = '0x0000000000000000000000000000000000000000000000000000000000000000';
+
 async function signDelegatedAttestation(
   encodedData: string,
   schemaUid: string,
-  recipient: string
+  recipient: string,
+  refUID?: string
 ): Promise<SigningResult> {
   if (!signer) {
     throw new Error('Signer not initialized');
@@ -216,7 +221,7 @@ async function signDelegatedAttestation(
     recipient,
     expirationTime: 0n, // No expiration
     revocable: true,
-    refUID: '0x0000000000000000000000000000000000000000000000000000000000000000',
+    refUID: refUID ?? ZERO_BYTES32,
     data: encodedData,
     value: 0n,
     nonce: currentNonce,
