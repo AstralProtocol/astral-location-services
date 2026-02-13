@@ -88,6 +88,7 @@ export async function verifyWitnessChainStamp(
   if (stamp.signatures && stamp.signatures.length > 0) {
     for (const sig of stamp.signatures) {
       try {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { signatures: _, ...unsigned } = stamp;
         const message = JSON.stringify(unsigned);
         const recovered = ethers.verifyMessage(message, sig.value);
