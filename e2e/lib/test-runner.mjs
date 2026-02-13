@@ -117,6 +117,7 @@ async function loadSuites(client) {
     import('../tests/verify-proof.test.mjs'),
     import('../tests/attestation-decode.test.mjs'),
     import('../tests/attestation-signature.test.mjs'),
+    import('../tests/verify-proofmode.test.mjs'),
   ];
 
   const loaded = await Promise.all(modules);

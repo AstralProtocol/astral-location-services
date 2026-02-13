@@ -50,6 +50,9 @@ node_modules/
 .env
 .env.local
 
+# Private E2E test fixtures (real ProofMode bundles with location data)
+e2e/fixtures/private-*
+
 # Foundry build artifacts
 developer-templates/examples/foundry/out/
 developer-templates/examples/foundry/cache/
