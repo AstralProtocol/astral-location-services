@@ -17,7 +17,6 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import request from 'supertest';
 import { ethers, JsonRpcProvider, Wallet, Contract } from 'ethers';
 import { createTestApp } from '../../helpers/test-server.js';
-import { setNonce } from '../../../src/core/signing/attestation.js';
 import {
   SF_POINT,
   NYC_POINT,
@@ -127,14 +126,6 @@ describeLocalFork('Local Fork Submission', () => {
   });
 
   it('can submit a distance attestation to EAS', { timeout: 30000 }, async () => {
-    // Sync our service nonce with the contract nonce
-    // This is necessary because other tests may have incremented our internal nonce
-    const contractNonce = await easContract.getNonce(
-      '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266' // TEST_ATTESTER
-    );
-    setNonce(BigInt(contractNonce));
-    console.log(`Synced nonce to contract state: ${contractNonce}`);
-
     // Get attestation from compute service using the REGISTERED schema UID
     const res = await request(app)
       .post('/compute/v0/distance')

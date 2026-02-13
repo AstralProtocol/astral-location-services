@@ -91,20 +91,6 @@ export function initSignerFromMnemonic(mnemonic: string, chainId: number = 84532
 }
 
 /**
- * @deprecated Use getCurrentNonce() instead - nonce is now queried from EAS on each request
- */
-export function setNonce(_newNonce: bigint): void {
-  console.warn('setNonce is deprecated - nonce is now queried from EAS on each request');
-}
-
-/**
- * @deprecated Nonce is now queried from EAS on each request
- */
-export async function syncNonceFromEAS(): Promise<void> {
-  console.log('syncNonceFromEAS is deprecated - nonce is now queried from EAS on each signing request');
-}
-
-/**
  * Get the current signer address.
  */
 export function getSignerAddress(): string {
