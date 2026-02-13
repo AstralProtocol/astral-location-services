@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { Input } from '../types/index.js';
 
 /**
  * Shared Zod validation schemas for GeoJSON and compute requests.
@@ -80,12 +81,35 @@ export const GeometrySchema: z.ZodType<
   ])
 );
 
-// Input can be raw GeoJSON (for MVP) or UID references (Phase 2)
-export const InputSchema = z.union([
+// Verified proof input — validates just enough for geometry extraction
+const VerifiedProofInputSchema = z.object({
+  verifiedProof: z.object({
+    proof: z.object({
+      claim: z.object({
+        location: z.union([
+          z.object({
+            type: z.enum([
+              'Point', 'MultiPoint', 'LineString', 'MultiLineString',
+              'Polygon', 'MultiPolygon', 'GeometryCollection',
+            ]),
+          }).passthrough(),
+          z.string(),
+        ]),
+      }).passthrough(),
+    }).passthrough(),
+    credibility: z.object({}).passthrough(),
+    attestation: z.object({ uid: z.string() }).passthrough(),
+  }).passthrough(),
+});
+
+// Input can be raw GeoJSON, verified proof, or UID references
+// Cast needed because Zod's passthrough inference doesn't match exact TS interfaces
+export const InputSchema: z.ZodType<Input> = z.union([
   GeometrySchema,
-  z.object({ uid: z.string() }),
+  VerifiedProofInputSchema,
   z.object({ uid: z.string(), uri: z.string().url() }),
-]);
+  z.object({ uid: z.string() }),
+]) as z.ZodType<Input>;
 
 // Common request fields
 export const ChainIdSchema = z.number().int().positive('chainId must be a positive integer');

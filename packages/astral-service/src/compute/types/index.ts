@@ -10,6 +10,10 @@ export type {
   ProblemDetails,
 } from '../../core/types/index.js';
 
+// Re-export verify types used by verified proof inputs
+export type { VerifiedLocationProofResponse } from '../../verify/types/index.js';
+import type { VerifiedLocationProofResponse, CredibilityVector, LocationClaim } from '../../verify/types/index.js';
+
 // ============================================
 // GeoJSON & Input Types
 // ============================================
@@ -31,11 +35,24 @@ export interface OffchainInput {
   uri: string;
 }
 
-export type Input = RawGeometryInput | OnchainInput | OffchainInput;
+export interface VerifiedProofInput {
+  verifiedProof: VerifiedLocationProofResponse;
+}
+
+export type Input = RawGeometryInput | OnchainInput | OffchainInput | VerifiedProofInput;
+
+export interface ProofInputContext {
+  ref: string;
+  credibility: CredibilityVector;
+  claim: LocationClaim;
+  evaluatedAt: number;
+  evaluationMethod: string;
+}
 
 export interface ResolvedInput {
   geometry: RawGeometryInput;
   ref: string;
+  proofContext?: ProofInputContext;
 }
 
 // ============================================
@@ -121,6 +138,7 @@ export interface NumericComputeResponse {
   inputRefs: string[];
   attestation: AttestationData;
   delegatedAttestation: DelegatedAttestationData;
+  proofInputs?: ProofInputContext[];
 }
 
 export interface BooleanComputeResponse {
@@ -130,6 +148,7 @@ export interface BooleanComputeResponse {
   inputRefs: string[];
   attestation: AttestationData;
   delegatedAttestation: DelegatedAttestationData;
+  proofInputs?: ProofInputContext[];
 }
 
 export type ComputeResponse = NumericComputeResponse | BooleanComputeResponse;
@@ -158,4 +177,8 @@ export function isOnchainInput(input: Input): input is OnchainInput {
 
 export function isOffchainInput(input: Input): input is OffchainInput {
   return typeof input === 'object' && 'uid' in input && 'uri' in input;
+}
+
+export function isVerifiedProofInput(input: Input): input is VerifiedProofInput {
+  return typeof input === 'object' && input !== null && 'verifiedProof' in input;
 }
