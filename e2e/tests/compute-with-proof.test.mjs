@@ -144,6 +144,8 @@ export function suite(client) {
             },
             credibility: {},
             attestation: { uid: '0x0000000000000000000000000000000000000000000000000000000000000001' },
+            evaluatedAt: 1700000000,
+            evaluationMethod: 'tee',
           };
 
           const res = await client.compute.distance(
@@ -154,8 +156,8 @@ export function suite(client) {
           return [
             assertStatus(res, 400),
             assertTrue(
-              res.body?.detail?.includes('non-GeoJSON') || res.body?.title === 'Bad Request',
-              'error mentions non-GeoJSON or bad request',
+              res.body?.detail?.includes('non-GeoJSON') || res.body?.title === 'Invalid Input',
+              'error mentions non-GeoJSON or invalid input',
             ),
           ];
         },

@@ -98,7 +98,11 @@ const VerifiedProofInputSchema = z.object({
       }).passthrough(),
     }).passthrough(),
     credibility: z.object({}).passthrough(),
-    attestation: z.object({ uid: z.string() }).passthrough(),
+    attestation: z.object({
+      uid: z.string().regex(/^0x[a-fA-F0-9]{64}$/, 'Invalid attestation UID format'),
+    }).passthrough(),
+    evaluatedAt: z.number(),
+    evaluationMethod: z.string(),
   }).passthrough(),
 });
 
