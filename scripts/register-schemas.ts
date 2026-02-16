@@ -17,6 +17,11 @@ const SCHEMAS = {
     schema: 'bool result, bytes32[] inputRefs, uint256 timestamp, string operation',
     description: 'Astral boolean policy attestation for contains, within, and intersects operations',
   },
+  verify: {
+    name: 'VerifyAttestation',
+    schema: 'bytes32 proofHash, uint32 meanDistanceMeters, uint32 maxDistanceMeters, uint16 withinRadiusBp, uint16 meanOverlapBp, uint16 minOverlapBp, uint16 signaturesValidBp, uint16 structureValidBp, uint16 signalsConsistentBp, uint16 uniquePluginRatioBp, uint8 stampCount',
+    description: 'Astral verify attestation for verified location proof credibility vectors',
+  },
 };
 
 // EAS Schema Registry addresses

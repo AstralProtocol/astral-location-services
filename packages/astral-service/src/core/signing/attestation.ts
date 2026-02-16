@@ -246,6 +246,8 @@ async function signDelegatedAttestation(
       recipient,
       data: encodedData,
       signature, // Combined signature as hex string (r + s + v)
+      revocable: message.revocable,
+      refUID: message.refUID as string,
     },
     delegatedAttestation: {
       signature, // Same signature, combined hex

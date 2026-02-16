@@ -381,9 +381,9 @@ export function makeStampRequest(stamp) {
 
 export const EAS_ADDRESS = '0x4200000000000000000000000000000000000021';
 
-// Registered schemas on Base Sepolia
-export const NUMERIC_SCHEMA_UID = '0x6513f94acd5413d4e5e6cba2ec12db18e178a498eb622ccfe9dfea40e1e1e610';
-export const BOOLEAN_SCHEMA_UID = '0x128e991560d62a7b2d7ea16c82aa31345ac917097d550526780b30050674486f';
+// Registered schemas on Base Sepolia (canonical UIDs from .env.example)
+export const NUMERIC_SCHEMA_UID = '0xc2b013ecb68d59b28f5d301203ec630335d97c37b400b16b359db6972572e02a';
+export const BOOLEAN_SCHEMA_UID = '0x4958625091a773dcfb37a1c33099a378f32a975a7fb61f33d53c4be7589898f5';
 
 export const EAS_ABI = [
   `function attestByDelegation(

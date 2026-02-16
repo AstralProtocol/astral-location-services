@@ -10,6 +10,10 @@ services:
       - CHAIN_ID=${CHAIN_ID:-84532}
       - API_KEYS=${API_KEYS}
       - PORT=3000
+      - NUMERIC_SCHEMA_UID=${NUMERIC_SCHEMA_UID}
+      - BOOLEAN_SCHEMA_UID=${BOOLEAN_SCHEMA_UID}
+      - VERIFY_SCHEMA_UID=${VERIFY_SCHEMA_UID}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-*}
     depends_on:
       db:
         condition: service_healthy
