@@ -8,6 +8,10 @@ import type { LocationProofPlugin, PluginMetadata } from './interface.js';
 import { getPluginMetadata } from './interface.js';
 import { ProofModePlugin } from './proofmode/index.js';
 import { WitnessChainPlugin } from './witnesschain/index.js';
+import { GpsdPlugin } from './gpsd/index.js';
+import { GeocluePlugin } from './geoclue/index.js';
+import { WifiMlsPlugin } from './wifi-mls/index.js';
+import { IpGeolocationPlugin } from './ip-geolocation/index.js';
 
 // Plugin registry storage
 const plugins = new Map<string, LocationProofPlugin>();
@@ -58,6 +62,10 @@ export function listPlugins(): PluginMetadata[] {
 export function initPluginRegistry(): void {
   registerPlugin(new ProofModePlugin());
   registerPlugin(new WitnessChainPlugin());
+  registerPlugin(new GpsdPlugin());
+  registerPlugin(new GeocluePlugin());
+  registerPlugin(new WifiMlsPlugin());
+  registerPlugin(new IpGeolocationPlugin());
 
   console.log(`Plugin registry initialized with ${plugins.size} plugin(s)`);
 }

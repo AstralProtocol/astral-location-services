@@ -13,6 +13,7 @@ import {
   VALID_PROOF,
   MULTI_STAMP_PROOF,
   REDUNDANT_STAMP_PROOF,
+  MULTI_PLUGIN_PROOF,
   STAMP_OUTSIDE_RADIUS,
   STAMP_TEMPORAL_MISMATCH,
   NYC_CLAIM,
@@ -92,6 +93,40 @@ describe('POST /verify/v0/proof', () => {
       const { independence } = res.body.credibility.dimensions;
       expect(independence.uniquePluginRatio).toBeGreaterThanOrEqual(0);
       expect(independence.pluginNames).toBeInstanceOf(Array);
+      expect(independence.spatialAgreement).toBeGreaterThan(0);
+    });
+
+    it('verifies a multi-plugin proof with high plugin diversity', async () => {
+      const res = await request(app)
+        .post('/verify/v0/proof')
+        .send(makeVerifyRequest(MULTI_PLUGIN_PROOF));
+
+      expect(res.status).toBe(200);
+      expect(res.body.credibility.stampResults).toHaveLength(3);
+
+      // All three stamps should verify successfully
+      for (const stampResult of res.body.credibility.stampResults) {
+        expect(stampResult.signaturesValid).toBe(true);
+        expect(stampResult.structureValid).toBe(true);
+        expect(stampResult.signalsConsistent).toBe(true);
+      }
+
+      // Three unique plugins → high uniquePluginRatio (1.0)
+      const { independence } = res.body.credibility.dimensions;
+      expect(independence.uniquePluginRatio).toBe(1.0);
+      expect(independence.pluginNames).toHaveLength(3);
+      expect(independence.pluginNames).toContain('gpsd');
+      expect(independence.pluginNames).toContain('wifi-mls');
+      expect(independence.pluginNames).toContain('ip-geolocation');
+
+      // All dimension groups should be populated
+      // PROVISIONAL: Dimension set will change after comprehensive analysis
+      expect(res.body.credibility.dimensions.spatial).toBeDefined();
+      expect(res.body.credibility.dimensions.temporal).toBeDefined();
+      expect(res.body.credibility.dimensions.validity).toBeDefined();
+      expect(res.body.credibility.dimensions.independence).toBeDefined();
+
+      // All stamps near SF → high spatial agreement
       expect(independence.spatialAgreement).toBeGreaterThan(0);
     });
 
