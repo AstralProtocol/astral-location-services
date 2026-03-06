@@ -195,6 +195,10 @@ export async function checkSignatures(
       details.signatureError = 'Missing algorithm field';
       return false;
     }
+    if (sig.algorithm !== 'secp256k1') {
+      details.signatureError = `Unsupported algorithm '${sig.algorithm}' — only secp256k1 is verified`;
+      return false;
+    }
 
     try {
       const recovered = ethers.verifyMessage(message, sig.value);
