@@ -97,6 +97,19 @@ describe('GPSD Plugin', () => {
       expect(result.details.stampSignatureMismatch).toBeDefined();
     });
 
+    it('fails when coordinates are out of range', async () => {
+      const stamp: LocationStamp = {
+        ...VALID_GPSD_STAMP,
+        location: { type: 'Point', coordinates: [200, 37.7749] },
+      };
+
+      const result = await verifyGpsdStamp(stamp);
+
+      expect(result.valid).toBe(false);
+      expect(result.signalsConsistent).toBe(false);
+      expect(result.details.signalError).toContain('out of range');
+    });
+
     it('fails when lpVersion is wrong', async () => {
       const stamp: LocationStamp = { ...VALID_GPSD_STAMP, lpVersion: '0.1' };
 

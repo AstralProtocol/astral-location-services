@@ -101,6 +101,15 @@ function checkSignalConsistency(stamp: LocationStamp, details: Record<string, un
     return false;
   }
 
+  if (typeof stamp.location === 'object' && 'type' in stamp.location && stamp.location.type === 'Point') {
+    const coords = stamp.location.coordinates as [number, number];
+    const [lon, lat] = coords;
+    if (lon < -180 || lon > 180 || lat < -90 || lat > 90) {
+      details.signalError = `Coordinates out of range: [${lon}, ${lat}]`;
+      return false;
+    }
+  }
+
   details.signalChecks = { fixMode: mode, satellites, hasRequiredFields: true };
   return true;
 }
