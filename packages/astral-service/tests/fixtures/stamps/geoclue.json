@@ -10,8 +10,8 @@
   },
   "srs": "EPSG:4326",
   "temporalFootprint": {
-    "start": 1772808056,
-    "end": 1772808116
+    "start": 4102444800,
+    "end": 4102444860
   },
   "plugin": "geoclue",
   "pluginVersion": "0.1.0",
@@ -27,8 +27,8 @@
         "value": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
       },
       "algorithm": "secp256k1",
-      "value": "0x41f5727e63215e09c1b4777828f7063f23ebc0cc250365f28b624878a0d01a6f5f5919154713abab7938feb06e43a614d1a05ce315b66178ba7047342cb60e0d1c",
-      "timestamp": 1772808056
+      "value": "0xed3a23c540b8b96956947b4555f334aa2d2e37b54bcfa16574de54cdcc815a451c240520532191f2a30787ef6b9487026762d2a6e17c7175f3312ceb23445dc01c",
+      "timestamp": 4102444800
     }
   ]
 }

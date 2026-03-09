@@ -10,8 +10,8 @@
   },
   "srs": "EPSG:4326",
   "temporalFootprint": {
-    "start": 1772808056,
-    "end": 1772808116
+    "start": 4102444800,
+    "end": 4102444860
   },
   "plugin": "gpsd",
   "pluginVersion": "0.1.0",
@@ -27,8 +27,8 @@
         "value": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
       },
       "algorithm": "secp256k1",
-      "value": "0x1efa9c012a4c4a995157232b9456aded4845071ad4b59671a64f581d67ed37ad08930173e2826ff2b7643389876f8b15fb5c5574ca3e2db8c8b20a45006772ac1b",
-      "timestamp": 1772808056
+      "value": "0x9fcb6b5ec79b38c9e1b06fc1f8bfb632c8e2f0461c69920f3d5c939d21e019832a6f6ac67ca4241e73dd6647f383f5a77cb3791b44accdfb5423786c8648b9ee1c",
+      "timestamp": 4102444800
     }
   ]
 }

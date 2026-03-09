@@ -9,13 +9,14 @@
  */
 import { describe, it, expect, beforeAll } from 'vitest';
 import { readdirSync, readFileSync } from 'node:fs';
-import { join, basename } from 'node:path';
+import { dirname, join, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { verifyStamp, verifyProof } from '../../../src/verify/verifier.js';
 import { initPluginRegistry } from '../../../src/verify/plugins/index.js';
 import type { LocationStamp, LocationProof, LocationClaim } from '../../../src/types/verify.js';
 
-const fixturesDir = join(fileURLToPath(import.meta.url), '..', '..', '..', 'fixtures', 'stamps');
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const fixturesDir = join(__dirname, '..', '..', 'fixtures', 'stamps');
 
 function loadStampFixtures(): { name: string; stamp: LocationStamp }[] {
   const files = readdirSync(fixturesDir).filter((f) => f.endsWith('.json'));

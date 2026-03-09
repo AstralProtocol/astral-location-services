@@ -10,8 +10,8 @@
   },
   "srs": "EPSG:4326",
   "temporalFootprint": {
-    "start": 1772808056,
-    "end": 1772808116
+    "start": 4102444800,
+    "end": 4102444860
   },
   "plugin": "wifi-mls",
   "pluginVersion": "0.1.0",
@@ -27,8 +27,8 @@
         "value": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
       },
       "algorithm": "secp256k1",
-      "value": "0x910be1cf5cab2262cf7c774f5e5bb6720864db07f4261c01a85069400f38a5db2ebdd179ef1475e12ca5b421f220c037a05aa199dc6cd726fa718f67402880131c",
-      "timestamp": 1772808056
+      "value": "0x4f08d6a4badcea919074da79811afd352d22efee674e58f2005e63d2175cef5a3dd81f8a62f43bb64201938c9885f4f369b0c72ebf7a1d6478af44e30759264e1b",
+      "timestamp": 4102444800
     }
   ]
 }

@@ -15,6 +15,7 @@ import { ethers } from 'ethers';
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { canonicalize } from '../src/verify/plugins/geo-utils.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const FIXTURES_DIR = join(__dirname, '..', 'tests', 'fixtures', 'stamps');
@@ -22,21 +23,6 @@ const FIXTURES_DIR = join(__dirname, '..', 'tests', 'fixtures', 'stamps');
 // Hardhat account #0 — deterministic test wallet
 const TEST_KEY = '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80';
 const wallet = new ethers.Wallet(TEST_KEY);
-
-/** Sorted-key JSON canonicalization matching all plugins. */
-function canonicalize(obj: unknown): string {
-  return JSON.stringify(obj, (_key, value) => {
-    if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
-      return Object.keys(value)
-        .sort()
-        .reduce<Record<string, unknown>>((sorted, k) => {
-          sorted[k] = (value as Record<string, unknown>)[k];
-          return sorted;
-        }, {});
-    }
-    return value;
-  });
-}
 
 interface UnsignedStamp {
   lpVersion: string;
@@ -52,7 +38,6 @@ interface UnsignedStamp {
 async function signStamp(unsigned: UnsignedStamp) {
   const message = canonicalize(unsigned);
   const signature = await wallet.signMessage(message);
-  const now = Math.floor(Date.now() / 1000);
   return {
     ...unsigned,
     signatures: [
@@ -70,7 +55,9 @@ async function signStamp(unsigned: UnsignedStamp) {
 // Generator functions — one per plugin
 // ============================================
 
-const now = Math.floor(Date.now() / 1000);
+// Far-future timestamp so committed fixtures never expire.
+// If you regenerate, the signatures change — commit the new JSON files.
+const now = 4102444800; // 2099-12-31T00:00:00Z
 
 function gpsdUnsigned(): UnsignedStamp {
   return {
