@@ -26,6 +26,7 @@ WORKDIR /app
 ARG GIT_SHA=dev
 ENV NODE_ENV=production
 ENV GIT_SHA=$GIT_SHA
+RUN echo "$GIT_SHA" > /app/.git-sha
 
 # Copy root workspace files
 COPY package.json package-lock.json ./
