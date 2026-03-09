@@ -78,6 +78,9 @@ function checkSignalConsistency(stamp: LocationStamp, details: Record<string, un
   if (!stamp.signals) return false;
   let valid = true;
 
+  // IP geolocation is inherently city-level (~5-50 km). An accuracy claim
+  // under 1 km is physically implausible and likely indicates bad data or a
+  // misconfigured provider. This is a plausibility floor, not a precision check.
   const accuracyMeters = stamp.signals.accuracyMeters as number | undefined;
   if (typeof accuracyMeters !== 'number' || accuracyMeters < 1000) {
     details.suspiciousAccuracy = true;
