@@ -1,8 +1,11 @@
 /**
  * WiFi MLS Verification Logic
  *
- * MVP implementation - validates structure, WiFi AP signals, MLS response, and ECDSA signatures.
+ * MVP implementation - validates structure, WiFi signals, and ECDSA signatures.
  * Future: AP MAC address spoofing detection, MLS response freshness checks.
+ *
+ * Signal shape (from plugin-wifi-mls/src/create.ts):
+ *   { source: 'wifi', accuracyMeters, apCount }
  *
  * // MVP SIMPLIFICATION: No AP MAC address spoofing detection.
  * // PROVISIONAL: Validity dimensions will evolve — see CredibilityVector roadmap.
@@ -21,9 +24,9 @@ import { computeDistance, computeTemporalOverlap, checkBaseStructure, checkSigna
  *
  * Checks:
  * 1. Structure: LP v0.2, plugin name "wifi-mls", GeoJSON Point, temporalFootprint
- * 2. Signals: accessPoints array (macAddress, signalStrength), mlsResponse (lat/lon/accuracy)
+ * 2. Signals: source, accuracyMeters, apCount (real plugin-wifi-mls output shape)
  * 3. Signatures: ECDSA recovery against declared signer
- * 4. Signal consistency: >= 1 AP, MLS accuracy > 0, MLS coordinates in valid range
+ * 4. Signal consistency: apCount >= 1, accuracyMeters > 0, coordinates in range
  */
 export async function verifyWifiMlsStamp(stamp: LocationStamp): Promise<StampVerificationResult> {
   const details: Record<string, unknown> = {};
@@ -45,7 +48,7 @@ export async function verifyWifiMlsStamp(stamp: LocationStamp): Promise<StampVer
 /**
  * Evaluate a WiFi MLS stamp against a location claim.
  *
- * Returns raw measurements. Uses MLS accuracy estimate for radius check.
+ * Returns raw measurements. Uses MLS accuracyMeters for radius check.
  *
  * // PROVISIONAL: Evaluation dimensions will evolve — see CredibilityVector roadmap.
  */
@@ -73,65 +76,48 @@ export async function evaluateWifiMlsStamp(
 // Plugin-Specific Helpers
 // ============================================
 
-interface AccessPoint {
-  macAddress?: string;
-  signalStrength?: number;
-}
-
-interface MlsResponse {
-  lat?: number;
-  lon?: number;
-  accuracy?: number;
-}
-
 function checkSignalConsistency(stamp: LocationStamp, details: Record<string, unknown>): boolean {
   if (!stamp.signals) return false;
+  let valid = true;
 
-  const accessPoints = stamp.signals.accessPoints as AccessPoint[] | undefined;
-  if (!Array.isArray(accessPoints) || accessPoints.length === 0) {
-    details.signalError = 'Missing or empty accessPoints array';
-    return false;
+  const accuracyMeters = stamp.signals.accuracyMeters as number | undefined;
+  if (typeof accuracyMeters !== 'number' || accuracyMeters <= 0) {
+    details.invalidAccuracy = true;
+    valid = false;
   }
 
-  for (const ap of accessPoints) {
-    if (!ap.macAddress || typeof ap.signalStrength !== 'number') {
-      details.signalError = 'Access points must have macAddress and signalStrength';
-      return false;
+  const apCount = stamp.signals.apCount as number | undefined;
+  if (typeof apCount !== 'number' || apCount <= 0) {
+    details.invalidApCount = true;
+    valid = false;
+  }
+
+  if (typeof stamp.location === 'object' && 'type' in stamp.location && stamp.location.type === 'Point') {
+    const coords = stamp.location.coordinates as [number, number];
+    const [lon, lat] = coords;
+    if (lat < -90 || lat > 90) {
+      details.invalidLatitude = true;
+      valid = false;
+    }
+    if (lon < -180 || lon > 180) {
+      details.invalidLongitude = true;
+      valid = false;
     }
   }
 
-  const mlsResponse = stamp.signals.mlsResponse as MlsResponse | undefined;
-  if (!mlsResponse) {
-    details.signalError = 'Missing mlsResponse';
-    return false;
+  if (valid) {
+    details.signalChecks = { apCount, accuracyMeters, coordinatesValid: true };
   }
-
-  if (typeof mlsResponse.accuracy !== 'number' || mlsResponse.accuracy <= 0) {
-    details.signalError = `MLS accuracy must be > 0 (got ${mlsResponse.accuracy})`;
-    return false;
-  }
-
-  if (typeof mlsResponse.lat !== 'number' || typeof mlsResponse.lon !== 'number') {
-    details.signalError = 'MLS response must have lat and lon';
-    return false;
-  }
-
-  if (mlsResponse.lon < -180 || mlsResponse.lon > 180 || mlsResponse.lat < -90 || mlsResponse.lat > 90) {
-    details.signalError = `MLS coordinates out of range: [${mlsResponse.lon}, ${mlsResponse.lat}]`;
-    return false;
-  }
-
-  details.signalChecks = { apCount: accessPoints.length, mlsAccuracy: mlsResponse.accuracy, coordinatesValid: true };
-  return true;
+  return valid;
 }
 
 function getApCount(stamp: LocationStamp): number {
-  const accessPoints = stamp.signals?.accessPoints as AccessPoint[] | undefined;
-  return Array.isArray(accessPoints) ? accessPoints.length : 0;
+  const apCount = stamp.signals?.apCount as number | undefined;
+  return typeof apCount === 'number' ? apCount : 0;
 }
 
 function getStampAccuracy(stamp: LocationStamp): number {
-  const mlsResponse = stamp.signals?.mlsResponse as MlsResponse | undefined;
-  if (mlsResponse?.accuracy && typeof mlsResponse.accuracy === 'number' && mlsResponse.accuracy > 0) return mlsResponse.accuracy;
+  const accuracyMeters = stamp.signals?.accuracyMeters as number | undefined;
+  if (typeof accuracyMeters === 'number' && accuracyMeters > 0) return accuracyMeters;
   return 100; // Default WiFi MLS accuracy estimate
 }
