@@ -74,6 +74,25 @@ astral.eas.*        // EAS submission helpers
 - Before saying you lack deployment information, check existing deployment scripts (`scripts/`), CI configs, docker-compose files, and environment variable references in the repo
 - Do NOT browse `~/.ssh` or other credential stores — use the deployment scripts which already encode connection details
 - Deployment target: VPS via SSH + EigenCompute TEE
+- Staging URL: https://staging-api.astral.global/
+- The `GET /` and `GET /health` endpoints include a `commit` field showing the deployed git SHA
+
+## Releases and tags
+
+This service is self-hosted (not published to npm). We use git tags and GitHub releases to mark versions.
+
+**When to tag:** Tag after merging a meaningful set of changes to main — new features, plugin additions, breaking changes. Don't tag every commit.
+
+**How to tag:**
+```bash
+git tag v0.x.y
+git push origin v0.x.y
+gh release create v0.x.y --generate-notes
+```
+
+**Version scheme:** Semver. We're pre-1.0, so minor bumps for features, patch for fixes. Update `version` in `packages/astral-service/package.json` and `src/index.ts` when tagging.
+
+**Deployed commit tracking:** Every deployment bakes `GIT_SHA` into the Docker image at build time. Check what's deployed via `curl https://staging-api.astral.global/ | jq .commit`. This is more reliable than tags for knowing what's actually running.
 
 ## When Working on This Repo
 
