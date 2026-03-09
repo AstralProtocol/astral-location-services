@@ -53,6 +53,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             GIT_SHA=${{ github.sha }}
+          provenance: false
           no-cache: true
 
   deploy:
