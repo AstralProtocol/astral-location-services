@@ -18,64 +18,57 @@ describe('IP Geolocation Plugin', () => {
     });
 
     it('fails when ip is missing', async () => {
-      const stamp: LocationStamp = {
-        ...VALID_IP_GEO_STAMP,
-        signals: {
-          source: 'ip-geolocation',
-          accuracyMeters: 25000,
-        },
-      };
+      const { signatures: _, ...unsigned } = VALID_IP_GEO_STAMP;
+      const stamp = signStamp(
+        { ...unsigned, signals: { source: 'ip-geolocation', accuracyMeters: 25000 } },
+        Math.floor(Date.now() / 1000),
+      );
 
       const result = await verifyIpGeolocationStamp(stamp);
 
-      expect(result.valid).toBe(false);
+      expect(result.signaturesValid).toBe(true);
       expect(result.signalsConsistent).toBe(false);
       expect(result.details.invalidIpFormat).toBe(true);
     });
 
     it('fails when ip format is invalid', async () => {
-      const stamp: LocationStamp = {
-        ...VALID_IP_GEO_STAMP,
-        signals: {
-          source: 'ip-geolocation',
-          accuracyMeters: 25000,
-          ip: 'not-an-ip',
-        },
-      };
+      const { signatures: _, ...unsigned } = VALID_IP_GEO_STAMP;
+      const stamp = signStamp(
+        { ...unsigned, signals: { source: 'ip-geolocation', accuracyMeters: 25000, ip: 'not-an-ip' } },
+        Math.floor(Date.now() / 1000),
+      );
 
       const result = await verifyIpGeolocationStamp(stamp);
 
-      expect(result.valid).toBe(false);
+      expect(result.signaturesValid).toBe(true);
       expect(result.signalsConsistent).toBe(false);
       expect(result.details.invalidIpFormat).toBe(true);
     });
 
     it('fails when accuracyMeters is below 1000', async () => {
-      const stamp: LocationStamp = {
-        ...VALID_IP_GEO_STAMP,
-        signals: {
-          source: 'ip-geolocation',
-          accuracyMeters: 500,
-          ip: '203.0.113.42',
-        },
-      };
+      const { signatures: _, ...unsigned } = VALID_IP_GEO_STAMP;
+      const stamp = signStamp(
+        { ...unsigned, signals: { source: 'ip-geolocation', accuracyMeters: 500, ip: '203.0.113.42' } },
+        Math.floor(Date.now() / 1000),
+      );
 
       const result = await verifyIpGeolocationStamp(stamp);
 
-      expect(result.valid).toBe(false);
+      expect(result.signaturesValid).toBe(true);
       expect(result.signalsConsistent).toBe(false);
       expect(result.details.suspiciousAccuracy).toBe(true);
     });
 
     it('fails when coordinates are out of range', async () => {
-      const stamp: LocationStamp = {
-        ...VALID_IP_GEO_STAMP,
-        location: { type: 'Point', coordinates: [-200, 37.78] },
-      };
+      const { signatures: _, ...unsigned } = VALID_IP_GEO_STAMP;
+      const stamp = signStamp(
+        { ...unsigned, location: { type: 'Point', coordinates: [-200, 37.78] } },
+        Math.floor(Date.now() / 1000),
+      );
 
       const result = await verifyIpGeolocationStamp(stamp);
 
-      expect(result.valid).toBe(false);
+      expect(result.signaturesValid).toBe(true);
       expect(result.signalsConsistent).toBe(false);
       expect(result.details.invalidLongitude).toBe(true);
     });
