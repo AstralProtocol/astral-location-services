@@ -13,6 +13,7 @@ import { apiKeyAuth, initApiKeys } from './core/middleware/api-key-auth.js';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const GIT_SHA = process.env.GIT_SHA || 'dev';
 
 // Trust proxy for deployments behind reverse proxies (Railway, Heroku, etc.)
 // This is required for express-rate-limit to correctly identify client IPs
@@ -34,6 +35,7 @@ app.get('/health', async (_req, res) => {
   res.status(dbHealthy ? 200 : 503).json({
     status: dbHealthy ? 'healthy' : 'unhealthy',
     database: dbHealthy ? 'connected' : 'disconnected',
+    commit: GIT_SHA,
   });
 });
 
@@ -42,6 +44,7 @@ app.get('/', (_req, res) => {
   res.json({
     name: 'Astral Location Services',
     version: '0.1.0',
+    commit: GIT_SHA,
     description: 'Verifiable geospatial computation service for Ethereum',
     endpoints: {
       '/compute/v0/distance': 'POST - Compute distance between two geometries',

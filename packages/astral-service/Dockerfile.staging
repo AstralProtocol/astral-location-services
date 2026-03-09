@@ -23,7 +23,9 @@ FROM node:20-alpine AS runner
 
 WORKDIR /app
 
+ARG GIT_SHA=dev
 ENV NODE_ENV=production
+ENV GIT_SHA=$GIT_SHA
 
 # Copy root workspace files
 COPY package.json package-lock.json ./
