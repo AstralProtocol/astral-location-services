@@ -1,3 +1,4 @@
+import { readFileSync } from 'fs';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -11,9 +12,14 @@ import { errorHandler } from './core/middleware/error-handler.js';
 import { rateLimiter } from './core/middleware/rate-limit.js';
 import { apiKeyAuth, initApiKeys } from './core/middleware/api-key-auth.js';
 
+function getGitSha(): string {
+  if (process.env.GIT_SHA && process.env.GIT_SHA !== 'dev') return process.env.GIT_SHA;
+  try { return readFileSync('/app/.git-sha', 'utf-8').trim(); } catch { return 'dev'; }
+}
+
 const app = express();
 const PORT = process.env.PORT || 3000;
-const GIT_SHA = process.env.GIT_SHA || 'dev';
+const GIT_SHA = getGitSha();
 
 // Trust proxy for deployments behind reverse proxies (Railway, Heroku, etc.)
 // This is required for express-rate-limit to correctly identify client IPs
