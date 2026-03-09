@@ -3,7 +3,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { verifyGpsdStamp, evaluateGpsdStamp } from '../../../src/verify/plugins/gpsd/verify.js';
-import { VALID_GPSD_STAMP, VALID_CLAIM, signStampWrongSigner } from '../../fixtures/verify.js';
+import { VALID_GPSD_STAMP, VALID_CLAIM, signStamp, signStampWrongSigner } from '../../fixtures/verify.js';
 import type { LocationStamp } from '../../../src/types/verify.js';
 
 describe('GPSD Plugin', () => {
@@ -17,44 +17,32 @@ describe('GPSD Plugin', () => {
       expect(result.signalsConsistent).toBe(true);
     });
 
-    it('fails structure when missing required signals (fix object)', async () => {
-      const stamp: LocationStamp = {
-        ...VALID_GPSD_STAMP,
-        signals: { deviceType: 'gps' }, // no fix object
-      };
+    it('fails when accuracyMeters is missing', async () => {
+      const { signatures: _, ...unsigned } = VALID_GPSD_STAMP;
+      const stamp = signStamp(
+        { ...unsigned, signals: { source: 'gpsd', mode: 3 } },
+        Math.floor(Date.now() / 1000),
+      );
 
       const result = await verifyGpsdStamp(stamp);
 
-      expect(result.valid).toBe(false);
+      expect(result.signaturesValid).toBe(true);
       expect(result.signalsConsistent).toBe(false);
+      expect(result.details.invalidAccuracy).toBe(true);
     });
 
-    it('fails structure when fix mode < 2', async () => {
-      const stamp: LocationStamp = {
-        ...VALID_GPSD_STAMP,
-        signals: {
-          fix: { mode: 1, lat: 37.7749, lon: -122.4194, alt: 16, satellites: 3 },
-        },
-      };
+    it('fails when mode is not 2 or 3', async () => {
+      const { signatures: _, ...unsigned } = VALID_GPSD_STAMP;
+      const stamp = signStamp(
+        { ...unsigned, signals: { source: 'gpsd', accuracyMeters: 5, mode: 1 } },
+        Math.floor(Date.now() / 1000),
+      );
 
       const result = await verifyGpsdStamp(stamp);
 
-      expect(result.valid).toBe(false);
+      expect(result.signaturesValid).toBe(true);
       expect(result.signalsConsistent).toBe(false);
-    });
-
-    it('fails structure when satellite count is 0', async () => {
-      const stamp: LocationStamp = {
-        ...VALID_GPSD_STAMP,
-        signals: {
-          fix: { mode: 3, lat: 37.7749, lon: -122.4194, alt: 16, satellites: 0 },
-        },
-      };
-
-      const result = await verifyGpsdStamp(stamp);
-
-      expect(result.valid).toBe(false);
-      expect(result.signalsConsistent).toBe(false);
+      expect(result.details.invalidFixMode).toBe(true);
     });
 
     it('fails when signature value is empty', async () => {
@@ -98,16 +86,17 @@ describe('GPSD Plugin', () => {
     });
 
     it('fails when coordinates are out of range', async () => {
-      const stamp: LocationStamp = {
-        ...VALID_GPSD_STAMP,
-        location: { type: 'Point', coordinates: [200, 37.7749] },
-      };
+      const { signatures: _, ...unsigned } = VALID_GPSD_STAMP;
+      const stamp = signStamp(
+        { ...unsigned, location: { type: 'Point', coordinates: [200, 37.7749] } },
+        Math.floor(Date.now() / 1000),
+      );
 
       const result = await verifyGpsdStamp(stamp);
 
-      expect(result.valid).toBe(false);
+      expect(result.signaturesValid).toBe(true);
       expect(result.signalsConsistent).toBe(false);
-      expect(result.details.signalError).toContain('out of range');
+      expect(result.details.invalidLongitude).toBe(true);
     });
 
     it('fails when lpVersion is wrong', async () => {

@@ -3,7 +3,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { verifyGeoclueStamp, evaluateGeoclueStamp } from '../../../src/verify/plugins/geoclue/verify.js';
-import { VALID_GEOCLUE_STAMP, VALID_CLAIM, signStampWrongSigner } from '../../fixtures/verify.js';
+import { VALID_GEOCLUE_STAMP, VALID_CLAIM, signStamp, signStampWrongSigner } from '../../fixtures/verify.js';
 import type { LocationStamp } from '../../../src/types/verify.js';
 
 describe('GeoClue Plugin', () => {
@@ -17,40 +17,46 @@ describe('GeoClue Plugin', () => {
       expect(result.signalsConsistent).toBe(true);
     });
 
-    it('fails when accuracy is missing', async () => {
-      const stamp: LocationStamp = {
-        ...VALID_GEOCLUE_STAMP,
-        signals: { source: 'wifi' }, // no accuracy
-      };
+    it('fails when accuracyMeters is missing', async () => {
+      const { signatures: _, ...unsigned } = VALID_GEOCLUE_STAMP;
+      const stamp = signStamp(
+        { ...unsigned, signals: { source: 'geoclue2', platform: 'linux' } },
+        Math.floor(Date.now() / 1000),
+      );
 
       const result = await verifyGeoclueStamp(stamp);
 
-      expect(result.valid).toBe(false);
+      expect(result.signaturesValid).toBe(true);
       expect(result.signalsConsistent).toBe(false);
+      expect(result.details.invalidAccuracy).toBe(true);
     });
 
-    it('fails when accuracy is zero', async () => {
-      const stamp: LocationStamp = {
-        ...VALID_GEOCLUE_STAMP,
-        signals: { accuracy: 0, source: 'wifi' },
-      };
+    it('fails when accuracyMeters is zero', async () => {
+      const { signatures: _, ...unsigned } = VALID_GEOCLUE_STAMP;
+      const stamp = signStamp(
+        { ...unsigned, signals: { source: 'geoclue2', accuracyMeters: 0, platform: 'linux' } },
+        Math.floor(Date.now() / 1000),
+      );
 
       const result = await verifyGeoclueStamp(stamp);
 
-      expect(result.valid).toBe(false);
+      expect(result.signaturesValid).toBe(true);
       expect(result.signalsConsistent).toBe(false);
+      expect(result.details.invalidAccuracy).toBe(true);
     });
 
-    it('fails when source is invalid', async () => {
-      const stamp: LocationStamp = {
-        ...VALID_GEOCLUE_STAMP,
-        signals: { accuracy: 30, source: 'bluetooth' },
-      };
+    it('fails when platform is not linux', async () => {
+      const { signatures: _, ...unsigned } = VALID_GEOCLUE_STAMP;
+      const stamp = signStamp(
+        { ...unsigned, signals: { source: 'geoclue2', accuracyMeters: 50, platform: 'windows' } },
+        Math.floor(Date.now() / 1000),
+      );
 
       const result = await verifyGeoclueStamp(stamp);
 
-      expect(result.valid).toBe(false);
+      expect(result.signaturesValid).toBe(true);
       expect(result.signalsConsistent).toBe(false);
+      expect(result.details.invalidPlatform).toBe(true);
     });
 
     it('fails when signature value is empty', async () => {
@@ -86,15 +92,17 @@ describe('GeoClue Plugin', () => {
     });
 
     it('fails when coordinates are out of range', async () => {
-      const stamp: LocationStamp = {
-        ...VALID_GEOCLUE_STAMP,
-        location: { type: 'Point', coordinates: [-200, 37.7749] },
-      };
+      const { signatures: _, ...unsigned } = VALID_GEOCLUE_STAMP;
+      const stamp = signStamp(
+        { ...unsigned, location: { type: 'Point', coordinates: [-200, 37.7749] } },
+        Math.floor(Date.now() / 1000),
+      );
 
       const result = await verifyGeoclueStamp(stamp);
 
-      expect(result.valid).toBe(false);
+      expect(result.signaturesValid).toBe(true);
       expect(result.signalsConsistent).toBe(false);
+      expect(result.details.invalidLongitude).toBe(true);
     });
   });
 

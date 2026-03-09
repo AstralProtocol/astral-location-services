@@ -4,6 +4,9 @@
  * MVP implementation - validates structure, GeoClue2 signals, and ECDSA signatures.
  * Future: Cross-reference source type with expected accuracy ranges.
  *
+ * Signal shape (from plugin-geoclue/src/create.ts):
+ *   { source: 'geoclue2', accuracyMeters, altitudeMeters?, platform: 'linux' }
+ *
  * // MVP SIMPLIFICATION: Trusts GeoClue2 system accuracy estimate without independent verification.
  * // PROVISIONAL: Validity dimensions will evolve — see CredibilityVector roadmap.
  */
@@ -21,9 +24,9 @@ import { computeDistance, computeTemporalOverlap, checkBaseStructure, checkSigna
  *
  * Checks:
  * 1. Structure: LP v0.2, plugin name "geoclue", GeoJSON Point, temporalFootprint
- * 2. Signals: accuracy (meters), source (gps/wifi/cell/ip), altitude optional
+ * 2. Signals: source, accuracyMeters, platform (real plugin-geoclue output shape)
  * 3. Signatures: ECDSA recovery against declared signer
- * 4. Signal consistency: accuracy > 0, coordinates within valid ranges
+ * 4. Signal consistency: accuracyMeters > 0, coordinates in range
  */
 export async function verifyGeoclueStamp(stamp: LocationStamp): Promise<StampVerificationResult> {
   const details: Record<string, unknown> = {};
@@ -45,7 +48,7 @@ export async function verifyGeoclueStamp(stamp: LocationStamp): Promise<StampVer
 /**
  * Evaluate a GeoClue stamp against a location claim.
  *
- * Returns raw measurements. Uses GeoClue accuracy for radius check.
+ * Returns raw measurements. Uses GeoClue accuracyMeters for radius check.
  *
  * // PROVISIONAL: Evaluation dimensions will evolve — see CredibilityVector roadmap.
  */
@@ -72,38 +75,43 @@ export async function evaluateGeoclueStamp(
 // Plugin-Specific Helpers
 // ============================================
 
-const VALID_SOURCES = ['gps', 'wifi', 'cell', 'ip'];
-
 function checkSignalConsistency(stamp: LocationStamp, details: Record<string, unknown>): boolean {
   if (!stamp.signals) return false;
+  let valid = true;
 
-  const accuracy = stamp.signals.accuracy as number | undefined;
-  if (typeof accuracy !== 'number' || accuracy <= 0) {
-    details.signalError = `Accuracy must be > 0 (got ${accuracy})`;
-    return false;
+  const accuracyMeters = stamp.signals.accuracyMeters as number | undefined;
+  if (typeof accuracyMeters !== 'number' || accuracyMeters <= 0) {
+    details.invalidAccuracy = true;
+    valid = false;
   }
 
-  const source = stamp.signals.source as string | undefined;
-  if (!source || !VALID_SOURCES.includes(source)) {
-    details.signalError = `Source must be one of ${VALID_SOURCES.join(', ')} (got '${source}')`;
-    return false;
+  const platform = stamp.signals.platform as string | undefined;
+  if (platform !== 'linux') {
+    details.invalidPlatform = true;
+    valid = false;
   }
 
   if (typeof stamp.location === 'object' && 'type' in stamp.location && stamp.location.type === 'Point') {
     const coords = stamp.location.coordinates as [number, number];
     const [lon, lat] = coords;
-    if (lon < -180 || lon > 180 || lat < -90 || lat > 90) {
-      details.signalError = `Coordinates out of range: [${lon}, ${lat}]`;
-      return false;
+    if (lat < -90 || lat > 90) {
+      details.invalidLatitude = true;
+      valid = false;
+    }
+    if (lon < -180 || lon > 180) {
+      details.invalidLongitude = true;
+      valid = false;
     }
   }
 
-  details.signalChecks = { accuracy, source, coordinatesValid: true };
-  return true;
+  if (valid) {
+    details.signalChecks = { accuracyMeters, platform, coordinatesValid: true };
+  }
+  return valid;
 }
 
 function getStampAccuracy(stamp: LocationStamp): number {
-  const accuracy = stamp.signals?.accuracy as number | undefined;
-  if (typeof accuracy === 'number' && accuracy > 0) return accuracy;
+  const accuracyMeters = stamp.signals?.accuracyMeters as number | undefined;
+  if (typeof accuracyMeters === 'number' && accuracyMeters > 0) return accuracyMeters;
   return 50; // Default GeoClue accuracy estimate
 }

@@ -3,7 +3,7 @@
  */
 import { describe, it, expect } from 'vitest';
 import { verifyWifiMlsStamp, evaluateWifiMlsStamp } from '../../../src/verify/plugins/wifi-mls/verify.js';
-import { VALID_WIFI_MLS_STAMP, VALID_CLAIM, signStampWrongSigner } from '../../fixtures/verify.js';
+import { VALID_WIFI_MLS_STAMP, VALID_CLAIM, signStamp, signStampWrongSigner } from '../../fixtures/verify.js';
 import type { LocationStamp } from '../../../src/types/verify.js';
 
 describe('WiFi MLS Plugin', () => {
@@ -17,78 +17,60 @@ describe('WiFi MLS Plugin', () => {
       expect(result.signalsConsistent).toBe(true);
     });
 
-    it('fails when accessPoints is empty', async () => {
-      const stamp: LocationStamp = {
-        ...VALID_WIFI_MLS_STAMP,
-        signals: {
-          accessPoints: [],
-          mlsResponse: { lat: 37.7748, lon: -122.4196, accuracy: 50 },
-        },
-      };
+    it('fails when apCount is zero', async () => {
+      const { signatures: _, ...unsigned } = VALID_WIFI_MLS_STAMP;
+      const stamp = signStamp(
+        { ...unsigned, signals: { source: 'wifi', accuracyMeters: 100, apCount: 0 } },
+        Math.floor(Date.now() / 1000),
+      );
 
       const result = await verifyWifiMlsStamp(stamp);
 
-      expect(result.valid).toBe(false);
+      expect(result.signaturesValid).toBe(true);
       expect(result.signalsConsistent).toBe(false);
+      expect(result.details.invalidApCount).toBe(true);
     });
 
-    it('fails when AP is missing macAddress', async () => {
-      const stamp: LocationStamp = {
-        ...VALID_WIFI_MLS_STAMP,
-        signals: {
-          accessPoints: [{ signalStrength: -45 }],
-          mlsResponse: { lat: 37.7748, lon: -122.4196, accuracy: 50 },
-        },
-      };
+    it('fails when accuracyMeters is missing', async () => {
+      const { signatures: _, ...unsigned } = VALID_WIFI_MLS_STAMP;
+      const stamp = signStamp(
+        { ...unsigned, signals: { source: 'wifi', apCount: 5 } },
+        Math.floor(Date.now() / 1000),
+      );
 
       const result = await verifyWifiMlsStamp(stamp);
 
-      expect(result.valid).toBe(false);
+      expect(result.signaturesValid).toBe(true);
       expect(result.signalsConsistent).toBe(false);
+      expect(result.details.invalidAccuracy).toBe(true);
     });
 
-    it('fails when mlsResponse is missing', async () => {
-      const stamp: LocationStamp = {
-        ...VALID_WIFI_MLS_STAMP,
-        signals: {
-          accessPoints: [{ macAddress: 'AA:BB:CC:DD:EE:01', signalStrength: -45 }],
-        },
-      };
+    it('fails when accuracyMeters is zero', async () => {
+      const { signatures: _, ...unsigned } = VALID_WIFI_MLS_STAMP;
+      const stamp = signStamp(
+        { ...unsigned, signals: { source: 'wifi', accuracyMeters: 0, apCount: 5 } },
+        Math.floor(Date.now() / 1000),
+      );
 
       const result = await verifyWifiMlsStamp(stamp);
 
-      expect(result.valid).toBe(false);
+      expect(result.signaturesValid).toBe(true);
       expect(result.signalsConsistent).toBe(false);
+      expect(result.details.invalidAccuracy).toBe(true);
     });
 
-    it('fails when MLS accuracy is zero', async () => {
-      const stamp: LocationStamp = {
-        ...VALID_WIFI_MLS_STAMP,
-        signals: {
-          accessPoints: [{ macAddress: 'AA:BB:CC:DD:EE:01', signalStrength: -45 }],
-          mlsResponse: { lat: 37.7748, lon: -122.4196, accuracy: 0 },
-        },
-      };
+    it('fails when coordinates are out of range', async () => {
+      const { signatures: _, ...unsigned } = VALID_WIFI_MLS_STAMP;
+      const stamp = signStamp(
+        { ...unsigned, location: { type: 'Point', coordinates: [-122.4196, 91] } },
+        Math.floor(Date.now() / 1000),
+      );
 
       const result = await verifyWifiMlsStamp(stamp);
 
-      expect(result.valid).toBe(false);
+      expect(result.signaturesValid).toBe(true);
       expect(result.signalsConsistent).toBe(false);
-    });
-
-    it('fails when MLS coordinates are out of range', async () => {
-      const stamp: LocationStamp = {
-        ...VALID_WIFI_MLS_STAMP,
-        signals: {
-          accessPoints: [{ macAddress: 'AA:BB:CC:DD:EE:01', signalStrength: -45 }],
-          mlsResponse: { lat: 91, lon: -122.4196, accuracy: 50 },
-        },
-      };
-
-      const result = await verifyWifiMlsStamp(stamp);
-
-      expect(result.valid).toBe(false);
-      expect(result.signalsConsistent).toBe(false);
+      expect(result.details.invalidLatitude).toBe(true);
     });
 
     it('fails when signature value is empty', async () => {
@@ -131,7 +113,7 @@ describe('WiFi MLS Plugin', () => {
       expect(result.distanceMeters).toBeLessThan(200);
       expect(result.temporalOverlap).toBe(1.0);
       expect(result.withinRadius).toBe(true);
-      expect(result.details.apCount).toBe(3);
+      expect(result.details.apCount).toBe(5);
     });
 
     it('computes correct distance for distant stamp', async () => {

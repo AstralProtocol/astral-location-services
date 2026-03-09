@@ -161,6 +161,28 @@ export function checkBaseStructure(
 }
 
 // ============================================
+// Canonicalization
+// ============================================
+
+/**
+ * Deterministic JSON serialization with sorted keys.
+ * Matches the canonicalize() used by all plugins when signing stamps.
+ */
+export function canonicalize(obj: unknown): string {
+  return JSON.stringify(obj, (_key, value) => {
+    if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+      return Object.keys(value)
+        .sort()
+        .reduce<Record<string, unknown>>((sorted, k) => {
+          sorted[k] = (value as Record<string, unknown>)[k];
+          return sorted;
+        }, {});
+    }
+    return value;
+  });
+}
+
+// ============================================
 // Signature Verification
 // ============================================
 
@@ -180,7 +202,7 @@ export async function checkSignatures(
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { signatures: _, ...unsigned } = stamp;
-  const message = JSON.stringify(unsigned);
+  const message = canonicalize(unsigned);
 
   for (const sig of stamp.signatures) {
     if (!sig.value || sig.value.trim().length === 0) {

@@ -5,9 +5,10 @@
 import { ethers } from 'ethers';
 import type { LocationClaim, LocationStamp, LocationProof } from '../../src/types/verify.js';
 import { TEST_SCHEMA_UID, TEST_RECIPIENT, TEST_CHAIN_ID } from './geometries.js';
+import { canonicalize } from '../../src/verify/plugins/geo-utils.js';
 
-// SRS URI for WGS84
-const WGS84_SRS = 'http://www.opengis.net/def/crs/OGC/1.3/CRS84';
+// SRS value matching real plugin output
+const SRS = 'EPSG:4326';
 
 // Current timestamp for testing
 const now = Math.floor(Date.now() / 1000);
@@ -18,10 +19,10 @@ const testWallet = new ethers.Wallet(TEST_PRIVATE_KEY);
 
 /**
  * Sign a stamp with the test wallet.
- * Produces a real ECDSA signature over JSON.stringify(unsigned stamp).
+ * Uses canonicalize() for sorted-key JSON, matching real plugin signing.
  */
 export function signStamp(stamp: Omit<LocationStamp, 'signatures'>, timestamp: number): LocationStamp {
-  const message = JSON.stringify(stamp);
+  const message = canonicalize(stamp);
   const signature = testWallet.signMessageSync(message);
   return {
     ...stamp,
@@ -41,7 +42,7 @@ export function signStamp(stamp: Omit<LocationStamp, 'signatures'>, timestamp: n
  * For testing ECDSA recovery mismatch detection.
  */
 export function signStampWrongSigner(stamp: Omit<LocationStamp, 'signatures'>, timestamp: number): LocationStamp {
-  const message = JSON.stringify(stamp);
+  const message = canonicalize(stamp);
   const signature = testWallet.signMessageSync(message);
   return {
     ...stamp,
@@ -63,7 +64,7 @@ export const VALID_CLAIM: LocationClaim = {
   lpVersion: '0.2',
   locationType: 'geojson-point',
   location: { type: 'Point', coordinates: [-122.4194, 37.7749] },
-  srs: WGS84_SRS,
+  srs: SRS,
   subject: { scheme: 'eth-address', value: '0x1234567890123456789012345678901234567890' },
   radius: 100, // 100 meters
   time: { start: now - 60, end: now }, // Last minute
@@ -77,7 +78,7 @@ export const VALID_STAMP: LocationStamp = {
   lpVersion: '0.2',
   locationType: 'geojson-point',
   location: { type: 'Point', coordinates: [-122.4194, 37.7749] },
-  srs: WGS84_SRS,
+  srs: SRS,
   temporalFootprint: { start: now - 120, end: now + 60 },
   plugin: 'proofmode',
   pluginVersion: '0.1.0',
@@ -149,7 +150,7 @@ export const VALID_STAMP_SECOND: LocationStamp = {
   lpVersion: '0.2',
   locationType: 'geojson-point',
   location: { type: 'Point', coordinates: [-122.4195, 37.775] }, // Slightly different
-  srs: WGS84_SRS,
+  srs: SRS,
   temporalFootprint: { start: now - 90, end: now + 30 },
   plugin: 'proofmode', // Using proofmode since witnesschain isn't implemented yet
   pluginVersion: '0.1.0',
@@ -192,7 +193,7 @@ export const NYC_CLAIM: LocationClaim = {
   lpVersion: '0.2',
   locationType: 'geojson-point',
   location: { type: 'Point', coordinates: [-73.9857, 40.7484] },
-  srs: WGS84_SRS,
+  srs: SRS,
   subject: { scheme: 'eth-address', value: '0x1234567890123456789012345678901234567890' },
   radius: 50,
   time: { start: now - 60, end: now },
@@ -220,25 +221,20 @@ export function makeVerifyRequest(proof: LocationProof, options?: Record<string,
 
 /**
  * Valid GPSD stamp — GPS hardware fix at San Francisco.
- * Signed with test wallet for ECDSA verification.
+ * Signal shape matches real plugin-gpsd output.
  */
 export const VALID_GPSD_STAMP: LocationStamp = signStamp({
   lpVersion: '0.2',
   locationType: 'geojson-point',
   location: { type: 'Point', coordinates: [-122.4194, 37.7749] },
-  srs: WGS84_SRS,
+  srs: SRS,
   temporalFootprint: { start: now - 120, end: now + 60 },
   plugin: 'gpsd',
   pluginVersion: '0.1.0',
   signals: {
-    fix: {
-      mode: 3,
-      lat: 37.7749,
-      lon: -122.4194,
-      alt: 16.0,
-      satellites: 8,
-      accuracy: 5,
-    },
+    source: 'gpsd',
+    accuracyMeters: 5,
+    mode: 3,
   },
 }, now - 30);
 
@@ -248,20 +244,20 @@ export const VALID_GPSD_STAMP: LocationStamp = signStamp({
 
 /**
  * Valid GeoClue stamp — Linux system location at San Francisco.
- * Signed with test wallet for ECDSA verification.
+ * Signal shape matches real plugin-geoclue output.
  */
 export const VALID_GEOCLUE_STAMP: LocationStamp = signStamp({
   lpVersion: '0.2',
   locationType: 'geojson-point',
   location: { type: 'Point', coordinates: [-122.4195, 37.775] },
-  srs: WGS84_SRS,
+  srs: SRS,
   temporalFootprint: { start: now - 90, end: now + 30 },
   plugin: 'geoclue',
   pluginVersion: '0.1.0',
   signals: {
-    accuracy: 30,
-    source: 'wifi',
-    altitude: 15.0,
+    source: 'geoclue2',
+    accuracyMeters: 50,
+    platform: 'linux',
   },
 }, now - 20);
 
@@ -271,27 +267,20 @@ export const VALID_GEOCLUE_STAMP: LocationStamp = signStamp({
 
 /**
  * Valid WiFi MLS stamp — WiFi AP scan at San Francisco.
- * Signed with test wallet for ECDSA verification.
+ * Signal shape matches real plugin-wifi-mls output.
  */
 export const VALID_WIFI_MLS_STAMP: LocationStamp = signStamp({
   lpVersion: '0.2',
   locationType: 'geojson-point',
   location: { type: 'Point', coordinates: [-122.4196, 37.7748] },
-  srs: WGS84_SRS,
+  srs: SRS,
   temporalFootprint: { start: now - 100, end: now + 40 },
   plugin: 'wifi-mls',
   pluginVersion: '0.1.0',
   signals: {
-    accessPoints: [
-      { macAddress: 'AA:BB:CC:DD:EE:01', signalStrength: -45 },
-      { macAddress: 'AA:BB:CC:DD:EE:02', signalStrength: -60 },
-      { macAddress: 'AA:BB:CC:DD:EE:03', signalStrength: -72 },
-    ],
-    mlsResponse: {
-      lat: 37.7748,
-      lon: -122.4196,
-      accuracy: 50,
-    },
+    source: 'wifi',
+    accuracyMeters: 100,
+    apCount: 5,
   },
 }, now - 25);
 
@@ -300,27 +289,22 @@ export const VALID_WIFI_MLS_STAMP: LocationStamp = signStamp({
 // ============================================
 
 /**
- * Valid IP geolocation stamp — ipinfo.io lookup at San Francisco.
- * Signed with test wallet for ECDSA verification.
+ * Valid IP geolocation stamp — lookup at San Francisco.
+ * Signal shape matches real plugin-ip-geolocation output.
  */
 export const VALID_IP_GEO_STAMP: LocationStamp = signStamp({
   lpVersion: '0.2',
   locationType: 'geojson-point',
   location: { type: 'Point', coordinates: [-122.4, 37.78] },
-  srs: WGS84_SRS,
+  srs: SRS,
   temporalFootprint: { start: now - 110, end: now + 50 },
   plugin: 'ip-geolocation',
   pluginVersion: '0.1.0',
   signals: {
+    source: 'ip-geolocation',
+    accuracyMeters: 25000,
     ip: '203.0.113.42',
-    provider: 'ipinfo.io',
-    response: {
-      lat: 37.78,
-      lon: -122.4,
-      city: 'San Francisco',
-      region: 'California',
-      country: 'US',
-    },
+    city: 'San Francisco',
   },
 }, now - 35);
 
