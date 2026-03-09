@@ -61,7 +61,9 @@ RUN chmod +x /start.sh
 RUN mkdir -p /var/log/postgresql && chown postgres:postgres /var/log/postgresql
 
 # Environment defaults
+ARG GIT_SHA=dev
 ENV NODE_ENV=production
+ENV GIT_SHA=$GIT_SHA
 ENV POSTGRES_USER=astral
 ENV POSTGRES_PASSWORD=astral
 ENV POSTGRES_DB=astral
