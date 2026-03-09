@@ -85,7 +85,7 @@ describe('Signature Verification', () => {
   });
 
   describe('Signature determinism', () => {
-    it('produces identical signatures for same inputs when nonce unchanged', async () => {
+    it('produces valid signatures for identical inputs and consistent attestation data', async () => {
       const res1 = await request(app)
         .post('/compute/v0/distance')
         .send(makeRequest({ from: SF_POINT, to: NYC_POINT }));
@@ -97,18 +97,19 @@ describe('Signature Verification', () => {
       expect(res1.status).toBe(200);
       expect(res2.status).toBe(200);
 
-      // Nonces are queried from EAS - without actual submissions, they stay the same
-      // This is correct behavior: nonce reflects on-chain state
+      // Nonces are queried from EAS — without actual submissions, they stay the same
       expect(res1.body.delegatedAttestation.nonce).toBe(
         res2.body.delegatedAttestation.nonce
       );
 
-      // With same nonce and same inputs, signatures are deterministic
-      expect(res1.body.attestation.signature).toBe(
-        res2.body.attestation.signature
-      );
+      // Attestation content (schema, recipient, encoded data) is identical
+      expect(res1.body.attestation.schema).toBe(res2.body.attestation.schema);
+      expect(res1.body.attestation.recipient).toBe(res2.body.attestation.recipient);
+      expect(res1.body.attestation.data).toBe(res2.body.attestation.data);
 
-      // Both should verify correctly
+      // Both signatures recover to the correct attester
+      // Note: signatures may differ if requests span a second boundary
+      // (data.timestamp and deadline use Date.now()), but both must be valid
       expect(verifySignature(res1.body).toLowerCase()).toBe(TEST_ATTESTER.toLowerCase());
       expect(verifySignature(res2.body).toLowerCase()).toBe(TEST_ATTESTER.toLowerCase());
     });
