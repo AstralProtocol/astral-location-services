@@ -21,8 +21,8 @@ describe('IP Geolocation Plugin', () => {
       const stamp: LocationStamp = {
         ...VALID_IP_GEO_STAMP,
         signals: {
-          provider: 'ipinfo.io',
-          response: { lat: 37.78, lon: -122.4 },
+          source: 'ip-geolocation',
+          accuracyMeters: 25000,
         },
       };
 
@@ -30,15 +30,16 @@ describe('IP Geolocation Plugin', () => {
 
       expect(result.valid).toBe(false);
       expect(result.signalsConsistent).toBe(false);
+      expect(result.details.invalidIpFormat).toBe(true);
     });
 
     it('fails when ip format is invalid', async () => {
       const stamp: LocationStamp = {
         ...VALID_IP_GEO_STAMP,
         signals: {
+          source: 'ip-geolocation',
+          accuracyMeters: 25000,
           ip: 'not-an-ip',
-          provider: 'ipinfo.io',
-          response: { lat: 37.78, lon: -122.4 },
         },
       };
 
@@ -46,14 +47,16 @@ describe('IP Geolocation Plugin', () => {
 
       expect(result.valid).toBe(false);
       expect(result.signalsConsistent).toBe(false);
+      expect(result.details.invalidIpFormat).toBe(true);
     });
 
-    it('fails when provider is missing', async () => {
+    it('fails when accuracyMeters is below 1000', async () => {
       const stamp: LocationStamp = {
         ...VALID_IP_GEO_STAMP,
         signals: {
+          source: 'ip-geolocation',
+          accuracyMeters: 500,
           ip: '203.0.113.42',
-          response: { lat: 37.78, lon: -122.4 },
         },
       };
 
@@ -61,37 +64,20 @@ describe('IP Geolocation Plugin', () => {
 
       expect(result.valid).toBe(false);
       expect(result.signalsConsistent).toBe(false);
+      expect(result.details.suspiciousAccuracy).toBe(true);
     });
 
-    it('fails when response is missing', async () => {
+    it('fails when coordinates are out of range', async () => {
       const stamp: LocationStamp = {
         ...VALID_IP_GEO_STAMP,
-        signals: {
-          ip: '203.0.113.42',
-          provider: 'ipinfo.io',
-        },
+        location: { type: 'Point', coordinates: [-200, 37.78] },
       };
 
       const result = await verifyIpGeolocationStamp(stamp);
 
       expect(result.valid).toBe(false);
       expect(result.signalsConsistent).toBe(false);
-    });
-
-    it('fails when response coordinates are out of range', async () => {
-      const stamp: LocationStamp = {
-        ...VALID_IP_GEO_STAMP,
-        signals: {
-          ip: '203.0.113.42',
-          provider: 'ipinfo.io',
-          response: { lat: 37.78, lon: -200 },
-        },
-      };
-
-      const result = await verifyIpGeolocationStamp(stamp);
-
-      expect(result.valid).toBe(false);
-      expect(result.signalsConsistent).toBe(false);
+      expect(result.details.invalidLongitude).toBe(true);
     });
 
     it('fails when signature value is empty', async () => {
@@ -131,7 +117,8 @@ describe('IP Geolocation Plugin', () => {
       const stamp = signStamp({
         ...unsigned,
         signals: {
-          ...unsigned.signals,
+          source: 'ip-geolocation',
+          accuracyMeters: 25000,
           ip: '2001:db8::1',
         },
       }, Math.floor(Date.now() / 1000));
@@ -144,15 +131,13 @@ describe('IP Geolocation Plugin', () => {
   });
 
   describe('evaluate()', () => {
-    it('computes distance and uses conservative 25km accuracy', async () => {
+    it('computes distance and uses stamp accuracyMeters', async () => {
       const result = await evaluateIpGeolocationStamp(VALID_IP_GEO_STAMP, VALID_CLAIM);
 
       expect(result.distanceMeters).toBeLessThan(3000);
       expect(result.temporalOverlap).toBe(1.0);
-      // IP geolocation uses 25km default accuracy, so within effective radius
       expect(result.withinRadius).toBe(true);
       expect(result.details.stampAccuracy).toBe(25000);
-      expect(result.details.provider).toBe('ipinfo.io');
     });
 
     it('computes correct distance for distant stamp', async () => {

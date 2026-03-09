@@ -1,0 +1,34 @@
+{
+  "lpVersion": "0.2",
+  "locationType": "geojson-point",
+  "location": {
+    "type": "Point",
+    "coordinates": [
+      -73.9857,
+      40.7484
+    ]
+  },
+  "srs": "EPSG:4326",
+  "temporalFootprint": {
+    "start": 1772808056,
+    "end": 1772808116
+  },
+  "plugin": "geoclue",
+  "pluginVersion": "0.1.0",
+  "signals": {
+    "source": "geoclue2",
+    "accuracyMeters": 50,
+    "platform": "linux"
+  },
+  "signatures": [
+    {
+      "signer": {
+        "scheme": "eth-address",
+        "value": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+      },
+      "algorithm": "secp256k1",
+      "value": "0x41f5727e63215e09c1b4777828f7063f23ebc0cc250365f28b624878a0d01a6f5f5919154713abab7938feb06e43a614d1a05ce315b66178ba7047342cb60e0d1c",
+      "timestamp": 1772808056
+    }
+  ]
+}

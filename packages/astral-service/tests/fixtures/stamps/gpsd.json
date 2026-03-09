@@ -1,0 +1,34 @@
+{
+  "lpVersion": "0.2",
+  "locationType": "geojson-point",
+  "location": {
+    "type": "Point",
+    "coordinates": [
+      -73.9857,
+      40.7484
+    ]
+  },
+  "srs": "EPSG:4326",
+  "temporalFootprint": {
+    "start": 1772808056,
+    "end": 1772808116
+  },
+  "plugin": "gpsd",
+  "pluginVersion": "0.1.0",
+  "signals": {
+    "source": "gpsd",
+    "accuracyMeters": 5,
+    "mode": 3
+  },
+  "signatures": [
+    {
+      "signer": {
+        "scheme": "eth-address",
+        "value": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+      },
+      "algorithm": "secp256k1",
+      "value": "0x1efa9c012a4c4a995157232b9456aded4845071ad4b59671a64f581d67ed37ad08930173e2826ff2b7643389876f8b15fb5c5574ca3e2db8c8b20a45006772ac1b",
+      "timestamp": 1772808056
+    }
+  ]
+}

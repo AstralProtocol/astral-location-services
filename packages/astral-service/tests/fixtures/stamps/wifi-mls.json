@@ -1,0 +1,34 @@
+{
+  "lpVersion": "0.2",
+  "locationType": "geojson-point",
+  "location": {
+    "type": "Point",
+    "coordinates": [
+      -73.9857,
+      40.7484
+    ]
+  },
+  "srs": "EPSG:4326",
+  "temporalFootprint": {
+    "start": 1772808056,
+    "end": 1772808116
+  },
+  "plugin": "wifi-mls",
+  "pluginVersion": "0.1.0",
+  "signals": {
+    "source": "wifi",
+    "accuracyMeters": 100,
+    "apCount": 5
+  },
+  "signatures": [
+    {
+      "signer": {
+        "scheme": "eth-address",
+        "value": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+      },
+      "algorithm": "secp256k1",
+      "value": "0x910be1cf5cab2262cf7c774f5e5bb6720864db07f4261c01a85069400f38a5db2ebdd179ef1475e12ca5b421f220c037a05aa199dc6cd726fa718f67402880131c",
+      "timestamp": 1772808056
+    }
+  ]
+}

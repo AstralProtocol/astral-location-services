@@ -1,0 +1,35 @@
+{
+  "lpVersion": "0.2",
+  "locationType": "geojson-point",
+  "location": {
+    "type": "Point",
+    "coordinates": [
+      -73.9857,
+      40.7484
+    ]
+  },
+  "srs": "EPSG:4326",
+  "temporalFootprint": {
+    "start": 1772808056,
+    "end": 1772808116
+  },
+  "plugin": "ip-geolocation",
+  "pluginVersion": "0.1.0",
+  "signals": {
+    "source": "ip-geolocation",
+    "accuracyMeters": 25000,
+    "ip": "1.2.3.4",
+    "city": "New York"
+  },
+  "signatures": [
+    {
+      "signer": {
+        "scheme": "eth-address",
+        "value": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+      },
+      "algorithm": "secp256k1",
+      "value": "0x8f6c33ff3dfc490c9c3fc8aac65d19a32b32f0dd30cd3fe02549a7c50ab68382589cf0b3e50de08cf8521f6f58e2454762bf3872c39701316a31349a41f8fda11b",
+      "timestamp": 1772808056
+    }
+  ]
+}
