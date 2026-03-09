@@ -7,6 +7,7 @@
 
 import type { LocationStamp, LocationClaim, StampVerificationResult } from '../../types/index.js';
 import type { StampEvaluation } from '../interface.js';
+import { computeDistance, computeTemporalOverlap } from '../geo-utils.js';
 
 /**
  * Verify a ProofMode stamp's internal validity.
@@ -127,94 +128,3 @@ function checkSignalConsistency(stamp: LocationStamp): boolean {
   return stamp.signals !== undefined;
 }
 
-/**
- * Compute haversine distance between stamp and claim locations (meters).
- * Returns Infinity if coordinates can't be extracted (non-point geometries).
- */
-function computeDistance(
-  stamp: LocationStamp,
-  claim: LocationClaim,
-  details: Record<string, unknown>
-): number {
-  if (
-    typeof stamp.location === 'object' &&
-    'type' in stamp.location &&
-    stamp.location.type === 'Point' &&
-    typeof claim.location === 'object' &&
-    'type' in claim.location &&
-    claim.location.type === 'Point'
-  ) {
-    const stampCoords = stamp.location.coordinates as [number, number];
-    const claimCoords = claim.location.coordinates as [number, number];
-
-    const distance = haversineDistance(
-      claimCoords[1], claimCoords[0],
-      stampCoords[1], stampCoords[0]
-    );
-
-    details.distanceMeters = Math.round(distance);
-    return distance;
-  }
-
-  // Non-point geometries: can't compute distance in MVP
-  details.distanceNote = 'Complex geometry — distance requires PostGIS';
-  return Infinity;
-}
-
-/**
- * Compute temporal overlap fraction between stamp and claim time windows.
- * Returns 0-1 where 1.0 = stamp fully covers claim timeframe.
- */
-function computeTemporalOverlap(
-  stamp: LocationStamp,
-  claim: LocationClaim,
-  details: Record<string, unknown>
-): number {
-  const stampStart = stamp.temporalFootprint.start;
-  const stampEnd = stamp.temporalFootprint.end;
-  const claimStart = claim.time.start;
-  const claimEnd = claim.time.end;
-
-  // Full coverage
-  if (stampStart <= claimStart && stampEnd >= claimEnd) {
-    details.temporalNote = 'Stamp fully covers claim timeframe';
-    return 1.0;
-  }
-
-  // Partial overlap
-  const overlapStart = Math.max(stampStart, claimStart);
-  const overlapEnd = Math.min(stampEnd, claimEnd);
-
-  if (overlapStart <= overlapEnd) {
-    const overlapDuration = overlapEnd - overlapStart;
-    const claimDuration = claimEnd - claimStart;
-    const overlap = claimDuration > 0 ? overlapDuration / claimDuration : 0;
-    details.temporalNote = `Partial overlap: ${Math.round(overlap * 100)}%`;
-    return overlap;
-  }
-
-  details.temporalNote = 'No temporal overlap';
-  return 0;
-}
-
-/**
- * Calculate haversine distance between two points in meters.
- */
-function haversineDistance(
-  lat1: number, lon1: number,
-  lat2: number, lon2: number
-): number {
-  const R = 6371000; // Earth radius in meters
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
-
-function toRad(deg: number): number {
-  return deg * (Math.PI / 180);
-}
