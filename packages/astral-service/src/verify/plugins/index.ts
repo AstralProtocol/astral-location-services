@@ -12,6 +12,7 @@ import { GpsdPlugin } from './gpsd/index.js';
 import { GeocluePlugin } from './geoclue/index.js';
 import { WifiMlsPlugin } from './wifi-mls/index.js';
 import { IpGeolocationPlugin } from './ip-geolocation/index.js';
+import { RttAnchorPlugin } from './rtt-anchor/index.js';
 
 // Plugin registry storage
 const plugins = new Map<string, LocationProofPlugin>();
@@ -66,6 +67,7 @@ export function initPluginRegistry(): void {
   registerPlugin(new GeocluePlugin());
   registerPlugin(new WifiMlsPlugin());
   registerPlugin(new IpGeolocationPlugin());
+  registerPlugin(new RttAnchorPlugin());
 
   console.log(`Plugin registry initialized with ${plugins.size} plugin(s)`);
 }
